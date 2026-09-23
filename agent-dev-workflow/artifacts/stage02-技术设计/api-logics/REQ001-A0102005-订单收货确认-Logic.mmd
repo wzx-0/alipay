@@ -1,0 +1,22 @@
+flowchart TD
+    Start([接收订单收货确认请求]) --> Validate{参数校验:outOrderId与receiveType枚举}
+    Validate -->|失败| ParamError[返回参数错误]
+    Validate -->|通过| AcquireLock[获取分布式锁:outOrderId维度防并发确认操作]
+    AcquireLock -->|失败| LockError[返回订单处理中错误]
+    AcquireLock -->|成功| QueryOrder[SELECT tb_rent_order WHERE out_order_id]
+    QueryOrder --> StatusCheck{状态流转校验:用户确认收车要求DELIVERED,商家验收收车要求RETURN_DELIVERED}
+    StatusCheck -->|非法流转| StatusError[返回订单状态错误]
+    StatusCheck -->|合法| TxBegin[开启事务]
+    TxBegin --> UpdateOrder[Update tb_rent_order:置目标状态RECEIVED或RETURN_RECEIVED并记录收车或验收时间]
+    UpdateOrder --> TxCommit[提交事务]
+    TxCommit --> CallAlipayReceive["调用：支付宝开放平台-alipay.commerce.rent.order.fulfillment.receive|履约确认收货"]
+    CallAlipayReceive -->|成功| ReleaseLock[释放锁]
+    ReleaseLock --> Success[返回成功]
+    CallAlipayReceive -->|失败| Compensate[补偿:Update tb_rent_order恢复原状态并记录同步失败待重试]
+    Compensate --> ReleaseLockFail[释放锁]
+    ReleaseLockFail --> FailResp[返回确认失败]
+    ParamError --> End([结束])
+    LockError --> End
+    StatusError --> End
+    FailResp --> End
+    Success --> End

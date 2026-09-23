@@ -1,0 +1,32 @@
+flowchart TD
+    Start([接收支付宝异步通知]) --> VerifySign{RSA2验签}
+    VerifySign -->|失败| InsertSignFail[Insert tb_alipay_notify_record:sign_result置失败并process_status置处理失败]
+    InsertSignFail --> ReturnFail[应答fail]
+    VerifySign -->|通过| TxBegin[开启事务]
+    TxBegin --> InsertNotify[Insert tb_alipay_notify_record:sign_result置通过并process_status置待处理]
+    InsertNotify --> DuplicateCheck{notify_id唯一索引是否冲突}
+    DuplicateCheck -->|冲突即重复通知| TxRollbackDup[当前事务回滚]
+    TxRollbackDup --> ReturnSuccessDup[应答success幂等去重]
+    DuplicateCheck -->|首次通知| TxCommit[提交事务]
+    TxCommit --> ReturnSuccess[快速应答success,先落库后异步处理]
+    ReturnSuccess --> AsyncDispatch[异步分发:按msg_category经MQ或线程池处理,不阻塞应答]
+    ReturnSuccess --> End([结束])
+
+    subgraph 异步业务分发处理
+        AsyncDispatch --> CategoryBranch{msg_category分发}
+        CategoryBranch -->|FUND_AUTH_FREEZE| UpdateFreeze[Update tb_rent_order_sign:freeze_status与freeze_amount与freeze_time]
+        CategoryBranch -->|PAY| UpdatePay[Update tb_rent_pay_record与tb_rent_order_installment:支付终态与期次已支付]
+        CategoryBranch -->|AFTERSALE| UpdateAftersale[Update tb_rent_aftersale:售后状态同步]
+        CategoryBranch -->|ORDER_CHANGED| UpdateOrder[Update tb_rent_order:订单状态同步]
+        UpdateFreeze --> MarkSuccess[Update tb_alipay_notify_record:process_status置处理成功并记process_time]
+        UpdatePay --> MarkSuccess
+        UpdateAftersale --> MarkSuccess
+        UpdateOrder --> MarkSuccess
+        MarkSuccess --> ProcessDone([分发处理完成])
+    end
+
+    CategoryBranch -->|处理异常| MarkFail[Update tb_alipay_notify_record:process_status置处理失败并记fail_reason与retry_count加1]
+    MarkFail --> RetryNote[等待补偿任务J0108001扫描重试]
+    RetryNote --> ProcessFailEnd([分发失败待重试])
+    ReturnFail --> End
+    ReturnSuccessDup --> End

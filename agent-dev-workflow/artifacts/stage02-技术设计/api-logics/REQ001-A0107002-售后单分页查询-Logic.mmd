@@ -1,0 +1,12 @@
+flowchart TD
+    Start([接收售后单分页查询请求]) --> Validate{参数校验:页码与条数}
+    Validate -->|失败| ParamError[返回参数错误]
+    Validate -->|通过| CacheCheck{查询缓存:key为条件摘要加页码}
+    CacheCheck -->|命中未过期| HitCache[返回缓存分页数据]
+    CacheCheck -->|未命中| PageQuery[SELECT分页查询:tb_rent_aftersale按outOrderId与aftersaleStatus等条件过滤且create_time倒序,页容量上限100]
+    PageQuery --> BuildResult[构建响应:售后单分页列表]
+    BuildResult --> CacheWrite[写缓存:过期时间30秒]
+    CacheWrite --> Success[返回成功]
+    ParamError --> End([结束])
+    HitCache --> End
+    Success --> End

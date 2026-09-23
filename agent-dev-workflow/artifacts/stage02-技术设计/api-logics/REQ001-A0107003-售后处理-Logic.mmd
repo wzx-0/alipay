@@ -1,0 +1,39 @@
+flowchart TD
+    Start([接收售后处理请求]) --> Validate{参数校验:outAftersaleId与operationType枚举}
+    Validate -->|失败| ParamError[返回参数错误]
+    Validate -->|通过| AcquireLock[获取分布式锁:outAftersaleId维度]
+    AcquireLock -->|失败| LockError[返回售后单处理中错误]
+    AcquireLock -->|成功| QueryAftersale[SELECT tb_rent_aftersale:售后单状态]
+    QueryAftersale --> StatusCheck{售后单处理中才可操作}
+    StatusCheck -->|否| StatusError[返回售后单状态错误]
+    StatusCheck -->|是| OpBranch{operationType分支}
+    OpBranch -->|USER_CANCEL_APPLY| RefundSkipCheck{是否取消类售后完结前的取消登记}
+    OpBranch -->|AFTERSALE_FINISH| RefundCheck{取消类售后:核对关联退款记录均已退款成功}
+    RefundCheck -->|未完成| RefundError[返回退款未完成不可完结]
+    RefundSkipCheck -->|是| TxBegin[开启事务]
+    RefundCheck -->|完成| TxBegin
+    TxBegin --> UpdateAftersale[Update tb_rent_aftersale:记operation_type,完结时置已完结与finish_time]
+    UpdateAftersale --> TxCommit[提交事务]
+    TxCommit --> OpTypeCheck{是否售后完结操作}
+    OpTypeCheck -->|否,仅取消登记| ReleaseLock[释放锁]
+    ReleaseLock --> ApplySuccess[返回处理成功]
+    OpTypeCheck -->|是| CallConfirm["调用：支付宝开放平台-alipay.commerce.rent.order.aftersale.confirm|租赁售后订单商户审核"]
+    CallConfirm -->|成功| NeedCloseCheck{取消类售后完结需关单}
+    NeedCloseCheck -->|是| CallCloseOrder["调用：订单领域-A0102007|订单关闭"]
+    NeedCloseCheck -->|否| ReleaseLockFinish[释放锁]
+    CallCloseOrder -->|成功| ReleaseLockFinish
+    CallCloseOrder -->|失败| CloseCompensate[补偿:售后终态保留,关单失败记录告警转人工重试]
+    CloseCompensate --> ReleaseLockFail[释放锁]
+    ReleaseLockFail --> FailResp[返回关单失败]
+    ReleaseLockFinish --> FinishSuccess[返回售后完结成功]
+    CallConfirm -->|失败| ConfirmCompensate[补偿:Update tb_rent_aftersale回滚为处理中]
+    ConfirmCompensate --> ReleaseLockConfirmFail[释放锁]
+    ReleaseLockConfirmFail --> ConfirmFailResp[返回售后同步失败]
+    ParamError --> End([结束])
+    LockError --> End
+    StatusError --> End
+    RefundError --> End
+    FailResp --> End
+    ApplySuccess --> End
+    ConfirmFailResp --> End
+    FinishSuccess --> End

@@ -1,0 +1,32 @@
+flowchart TD
+    Start([接收交易退款请求]) --> Validate{参数校验:refundItems结构及退款金额大于0}
+    Validate -->|失败| ParamError[返回参数错误]
+    Validate -->|通过| AcquireLock[获取分布式锁:outOrderId维度防并发退款]
+    AcquireLock -->|失败| LockError[返回订单退款中错误]
+    AcquireLock -->|成功| BatchQueryPayRecord[BatchQuery tb_rent_pay_record:按payRecordId集合查原支付记录]
+    BatchQueryPayRecord --> RefundableCheck{可退校验:原支付成功且退款金额不超支付金额减已退金额}
+    RefundableCheck -->|失败| RefundableError[返回可退金额不足错误]
+    RefundableCheck -->|通过| TxBegin[开启事务]
+
+    subgraph 退款单创建事务
+        TxBegin --> GenRequestNo[生成out_request_no退款请求号作为幂等键]
+        GenRequestNo --> BatchInsertRefund[BatchInsert tb_rent_refund_record:refund_status置处理中]
+        BatchInsertRefund --> TxCommit[提交事务]
+    end
+
+    TxCommit --> CallRefund["调用：支付宝开放平台-alipay.trade.refund|统一收单交易退款"]
+    CallRefund -->|成功| TxBegin2[开启退款结果事务]
+    TxBegin2 --> BatchUpdateRefundOk[BatchUpdate tb_rent_refund_record:置退款成功并记refund_time]
+    BatchUpdateRefundOk --> UpdatePayRecord[Update tb_rent_pay_record:累加refund_amount,全额退清时pay_status置已全额退款]
+    UpdatePayRecord --> TxCommit2[提交退款结果事务]
+    TxCommit2 --> ReleaseLock[释放锁]
+    ReleaseLock --> Success[返回成功]
+    CallRefund -->|失败| Compensate[补偿事务:BatchUpdate tb_rent_refund_record置退款失败]
+    Compensate --> TxCommitFail[提交补偿事务]
+    TxCommitFail --> ReleaseLockFail[释放锁]
+    ReleaseLockFail --> FailResp[返回退款失败]
+    ParamError --> End([结束])
+    LockError --> End
+    RefundableError --> End
+    FailResp --> End
+    Success --> End

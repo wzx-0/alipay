@@ -1,0 +1,15 @@
+flowchart TD
+    Start([接收订单详情查询请求]) --> Validate{参数校验:outOrderId必填}
+    Validate -->|失败| ParamError[返回参数错误]
+    Validate -->|通过| CachePolicy[缓存策略评估:详情为运营操作依据,实时性优先,判定不启用缓存]
+    CachePolicy --> QueryOrder[SELECT tb_rent_order WHERE out_order_id]
+    QueryOrder --> OrderCheck{订单是否存在}
+    OrderCheck -->|不存在| NotFoundError[返回订单不存在错误]
+    OrderCheck -->|存在| QueryItems[SELECT tb_rent_order_item WHERE order_id]
+    QueryItems --> QueryInstallments[SELECT tb_rent_order_installment WHERE order_id按期号升序]
+    QueryInstallments --> QuerySign[SELECT tb_rent_order_sign WHERE order_id]
+    QuerySign --> BuildResult[组装响应:订单主信息加商品明细加期次计划加签约信息]
+    BuildResult --> Success[返回成功]
+    ParamError --> End([结束])
+    NotFoundError --> End
+    Success --> End

@@ -1,0 +1,31 @@
+flowchart TD
+    Start([接收订单关闭请求]) --> Validate{参数校验:outOrderId与reasonCode必填}
+    Validate -->|失败| ParamError[返回参数错误]
+    Validate -->|通过| AcquireLock[获取分布式锁:outOrderId维度]
+    AcquireLock -->|失败| LockError[返回订单处理中错误]
+    AcquireLock -->|成功| QueryOrder[SELECT tb_rent_order WHERE out_order_id]
+    QueryOrder --> StatusCheck{状态校验:仅确认收货前状态可关闭}
+    StatusCheck -->|非法| StatusError[返回订单状态错误]
+    StatusCheck -->|合法| QueryPayRefund[SELECT tb_rent_pay_record与tb_rent_refund_record:已支付记录与退款记录]
+    QueryPayRefund --> RefundDoneCheck{已支付费项是否均已全额退款}
+    RefundDoneCheck -->|否| RefundError[返回存在未退款项错误]
+    RefundDoneCheck -->|是| TxBegin[开启事务]
+
+    subgraph 订单关闭事务
+        TxBegin --> UpdateOrderClose[Update tb_rent_order:置CLOSED与关单原因与close_time]
+        UpdateOrderClose --> BatchCloseInstallment[BatchUpdate tb_rent_order_installment:未支付期次置为已关闭]
+        BatchCloseInstallment --> TxCommit[提交事务]
+    end
+
+    TxCommit --> CallAlipayClose["调用：支付宝开放平台-alipay.commerce.rent.order.close|租赁订单关闭"]
+    CallAlipayClose -->|成功| ReleaseLock[释放锁]
+    ReleaseLock --> Success[返回成功]
+    CallAlipayClose -->|失败| Compensate[补偿:恢复订单原状态与期次待支付状态]
+    Compensate --> ReleaseLockFail[释放锁]
+    ReleaseLockFail --> FailResp[返回关单失败]
+    ParamError --> End([结束])
+    LockError --> End
+    StatusError --> End
+    RefundError --> End
+    FailResp --> End
+    Success --> End

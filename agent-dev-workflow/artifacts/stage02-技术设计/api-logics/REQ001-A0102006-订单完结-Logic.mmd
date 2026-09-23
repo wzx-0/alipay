@@ -1,0 +1,28 @@
+flowchart TD
+    Start([接收订单完结请求]) --> Validate{参数校验:outOrderId与finishStatus枚举}
+    Validate -->|失败| ParamError[返回参数错误]
+    Validate -->|通过| AcquireLock[获取分布式锁:outOrderId维度]
+    AcquireLock -->|失败| LockError[返回订单处理中错误]
+    AcquireLock -->|成功| QueryOrder[SELECT tb_rent_order WHERE out_order_id]
+    QueryOrder --> StatusCheck{状态校验:仅RETURN_RECEIVED验收收车后可完结}
+    StatusCheck -->|非法| StatusError[返回订单状态错误]
+    StatusCheck -->|合法| TxBegin[开启事务]
+
+    subgraph 订单完结事务
+        TxBegin --> UpdateOrderFinish[Update tb_rent_order:置FINISHED与finish_status与finish_time]
+        UpdateOrderFinish --> BatchCloseInstallment[BatchUpdate tb_rent_order_installment:未支付期次置为已关闭]
+        BatchCloseInstallment --> TxCommit[提交事务]
+    end
+
+    TxCommit --> CallAlipayFinish["调用：支付宝开放平台-alipay.commerce.rent.order.fulfillment.finish|履约订单完成"]
+    CallAlipayFinish -->|成功| AsyncUnfreezeNote[支付宝侧自动解冻预授权并解除代扣协议,签约状态由异步通知A0108001更新]
+    AsyncUnfreezeNote --> ReleaseLock[释放锁]
+    ReleaseLock --> Success[返回成功]
+    CallAlipayFinish -->|失败| Compensate[补偿:恢复订单原状态与期次待支付状态]
+    Compensate --> ReleaseLockFail[释放锁]
+    ReleaseLockFail --> FailResp[返回完结失败]
+    ParamError --> End([结束])
+    LockError --> End
+    StatusError --> End
+    FailResp --> End
+    Success --> End

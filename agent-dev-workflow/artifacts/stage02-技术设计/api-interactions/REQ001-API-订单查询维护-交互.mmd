@@ -1,0 +1,53 @@
+sequenceDiagram
+    autonumber
+    actor U as 运营人员
+    participant P_PC as 订单管理PC页
+    participant S as 订阅服务端
+
+    U->>P_PC: 点击「订单管理」菜单进入订单列表页
+    P_PC->>S: [A0102002] 订单分页查询（默认条件）
+    activate S
+    S-->>P_PC: 返回订单分页列表
+    deactivate S
+    P_PC-->>U: 渲染订单列表
+
+    opt 条件筛选
+        U->>P_PC: 输入订单号/选择订单状态、渠道、时间范围
+        U->>P_PC: 点击「查询」按钮
+        P_PC->>S: [A0102002] 订单分页查询（携带筛选条件）
+        activate S
+        S-->>P_PC: 返回筛选后的分页列表
+        deactivate S
+        P_PC-->>U: 刷新订单列表
+    end
+
+    U->>P_PC: 点击订单行「查看详情」
+    P_PC->>S: [A0102003] 订单详情查询
+    activate S
+    S-->>P_PC: 返回订单详情（商品明细/订阅计划期次/签约信息）
+    deactivate S
+    P_PC-->>U: 展示订单详情页
+
+    opt 关闭订单（用户确认收货前）
+        U->>P_PC: 点击「关闭订单」按钮
+        P_PC->>P_PC: 弹出关单弹窗（选择原因编码、填写原因描述）
+        U->>P_PC: 点击「确认关闭」
+        P_PC->>S: [A0102007] 订单关闭
+        activate S
+        Note over S: 校验已支付费项已全额退款后调用支付宝 order.close（详见 API 逻辑图）
+        S-->>P_PC: 返回关单结果
+        deactivate S
+        P_PC-->>U: 提示"订单已关闭"，刷新详情
+    end
+
+    opt 修改租期
+        U->>P_PC: 点击「修改租期」按钮
+        P_PC->>P_PC: 弹出修改租期弹窗（租赁起止时间/期次计划扣款时间）
+        U->>P_PC: 填写新租期信息，点击「确认修改」
+        P_PC->>S: [A0102008] 修改租期
+        activate S
+        Note over S: 调用支付宝 order.modify（type=RENT_PLAN_TIME）同步租期变更（详见 API 逻辑图）
+        S-->>P_PC: 返回修改结果
+        deactivate S
+        P_PC-->>U: 提示"租期已修改"，刷新详情
+    end

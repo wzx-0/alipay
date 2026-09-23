@@ -1,0 +1,27 @@
+flowchart TD
+    Start([接收创建售后单请求]) --> Validate{参数校验:aftersaleType枚举,COMPENSATION时payAmount大于0必填}
+    Validate -->|失败| ParamError[返回参数错误]
+    Validate -->|通过| AcquireLock[获取分布式锁:outOrderId维度]
+    AcquireLock -->|失败| LockError[返回订单处理中错误]
+    AcquireLock -->|成功| QueryOrder[SELECT tb_rent_order与tb_rent_aftersale:订单状态及存量售后单]
+    QueryOrder --> DuplicateCheck{是否存在处理中售后单}
+    DuplicateCheck -->|存在| DuplicateError[返回存在处理中售后单错误]
+    DuplicateCheck -->|不存在| StatusCheck{售后状态校验:取消类须确认收货前,赔付类须确认收货后且订单未完结}
+    StatusCheck -->|不满足| StatusError[返回订单状态不支持售后]
+    StatusCheck -->|通过| TxBegin[开启事务]
+    TxBegin --> InsertAftersale[Insert tb_rent_aftersale:aftersale_status置处理中并生成outAftersaleId]
+    InsertAftersale --> TxCommit[提交事务]
+    TxCommit --> CallAftersaleCreate["调用：支付宝开放平台-alipay.commerce.rent.order.aftersale.create|租赁售后单创建"]
+    CallAftersaleCreate -->|成功| FillAftersaleId[Update tb_rent_aftersale:回填alipay_aftersale_id]
+    FillAftersaleId --> ReleaseLock[释放锁]
+    ReleaseLock --> BuildResp[构建响应:双侧售后单号]
+    BuildResp --> Success[返回成功]
+    CallAftersaleCreate -->|失败| Compensate[补偿:Update tb_rent_aftersale置已取消并记录失败原因]
+    Compensate --> ReleaseLockFail[释放锁]
+    ReleaseLockFail --> FailResp[返回创建失败]
+    ParamError --> End([结束])
+    LockError --> End
+    DuplicateError --> End
+    StatusError --> End
+    FailResp --> End
+    Success --> End

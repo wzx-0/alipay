@@ -1,0 +1,59 @@
+sequenceDiagram
+    autonumber
+    actor UM as 订阅用户
+    actor U as 财务运营
+    participant P_MINI as 订阅订单小程序页
+    participant P_PC as 资金管理PC页
+    participant S as 订阅服务端
+    participant AL as 支付宝平台
+
+    == JSAPI 主动支付（订阅金/费项） ==
+    Note over S: 到期期次的自动代扣由定时任务 J0102001 触发，无用户交互，流程见 API 逻辑图
+    UM->>P_MINI: 在订阅订单页选择待支付期次，点击「立即支付」
+    P_MINI->>P_MINI: 展示待支付金额与费项明细
+    P_MINI->>S: [A0105001] 订单支付（JSAPI，费项明细）
+    activate S
+    Note over S: 生成商家侧支付单后调用支付宝 order.pay 获取 tradeNo（详见 API 逻辑图）
+    S-->>P_MINI: 返回 tradeNo / outTradeNo / payAmount
+    deactivate S
+    P_MINI->>AL: 调用 my.tradePay 携 tradeNo 唤起支付宝收银台
+    UM->>AL: 确认金额并完成支付
+    AL-->>UM: 展示支付结果页
+    AL->>S: [A0108001] 异步通知（支付结果）
+    activate S
+    Note over S: 验签、幂等去重后更新支付流水与期次账单状态（详见 API 逻辑图）
+    S-->>AL: 应答 success
+    deactivate S
+    P_MINI->>S: [A0105004] 支付流水分页查询（确认支付结果）
+    activate S
+    S-->>P_MINI: 返回支付流水（payStatus=已支付）
+    deactivate S
+    P_MINI-->>UM: 展示"本期订阅金支付成功"
+
+    == 端外收款同步（管理端） ==
+    U->>P_PC: 在支付流水页点击「端外收款录入」
+    P_PC->>P_PC: 弹出录入弹窗（选择期次/费项、填写金额）
+    U->>P_PC: 填写微信/线下转账收款信息，点击「确认」
+    P_PC->>S: [A0105002] 端外支付同步（payItems）
+    activate S
+    Note over S: 记录端外收款流水并调用支付宝 pay.sync 同步费项（详见 API 逻辑图）
+    S-->>P_PC: 返回 outTradeNo / payAmount
+    deactivate S
+    P_PC->>S: [A0105004] 支付流水分页查询（刷新列表）
+    activate S
+    S-->>P_PC: 返回最新支付流水
+    deactivate S
+    P_PC-->>U: 展示端外收款流水记录
+
+    == 退款（管理端） ==
+    U->>P_PC: 在支付流水记录上点击「退款」
+    P_PC->>P_PC: 弹出退款弹窗（展示可退余额，填写退款金额与原因）
+    U->>P_PC: 点击「确认退款」
+    P_PC->>P_PC: 显示"确认发起退款？"二次确认框
+    U->>P_PC: 点击「确认」
+    P_PC->>S: [A0105003] 交易退款（refundItems）
+    activate S
+    Note over S: 生成退款单（幂等退款请求号）并调用支付宝 alipay.trade.refund（详见 API 逻辑图）
+    S-->>P_PC: 返回退款受理结果
+    deactivate S
+    P_PC-->>U: 提示"退款已发起"，刷新流水

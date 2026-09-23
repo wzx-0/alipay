@@ -1,0 +1,15 @@
+flowchart TD
+    Start([接收风控咨询请求]) --> Validate{参数校验:outOrderId必填}
+    Validate -->|失败| ParamError[返回参数错误]
+    Validate -->|通过| QueryOrder[SELECT tb_rent_order:订单存在且买家信息完整]
+    QueryOrder --> OrderCheck{订单处于待审核阶段}
+    OrderCheck -->|否| StatusError[返回订单状态错误]
+    OrderCheck -->|是| CallRiskConsult["调用：支付宝开放平台-alipay.commerce.rent.risk.consult|租赁行业风险咨询"]
+    CallRiskConsult -->|成功| InsertAudit[Insert tb_risk_audit:risk_level与consult_result留痕]
+    InsertAudit --> BuildResp[构建响应:riskLevel与auditResult与consultResult]
+    BuildResp --> Success[返回成功]
+    CallRiskConsult -->|失败| ConsultError[返回风控咨询失败]
+    ParamError --> End([结束])
+    StatusError --> End
+    ConsultError --> End
+    Success --> End

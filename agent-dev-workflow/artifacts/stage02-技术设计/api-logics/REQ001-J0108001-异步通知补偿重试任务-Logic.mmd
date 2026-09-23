@@ -1,0 +1,23 @@
+flowchart TD
+    Start([定时触发:每5分钟]) --> AcquireTaskLock[获取分布式锁:防多实例重复执行]
+    AcquireTaskLock -->|失败| SkipEnd([本轮跳过:已有实例执行中])
+    AcquireTaskLock -->|成功| StreamScan[流式扫描失败通知:SELECT tb_alipay_notify_record WHERE process_status处理失败且retry_count小于5,游标分批读取]
+    StreamScan --> HasDataCheck{存在待重试通知}
+    HasDataCheck -->|无| ReleaseTaskLock[释放任务锁]
+    ReleaseTaskLock --> TaskEnd([本轮任务结束])
+    HasDataCheck -->|有| BatchRetry[按批次重新分发处理]
+
+    subgraph 分批重试处理
+        BatchRetry --> CallDispatch["调用：通知网关-A0108001|通知业务分发处理"]
+        CallDispatch -->|处理成功| MarkSuccess[Update tb_alipay_notify_record:process_status置处理成功]
+        CallDispatch -->|处理失败| MarkRetryFail[Update tb_alipay_notify_record:retry_count加1并记fail_reason]
+        MarkSuccess --> NextBatch{还有下一条}
+        MarkRetryFail --> NextBatch
+        NextBatch -->|是| CallDispatch
+        NextBatch -->|否| OverLimitCheck{本轮存在失败且重试次数达上限的通知}
+        OverLimitCheck -->|是| SendAlarm[发送告警人工介入:通知持续失败不再自动重试]
+        OverLimitCheck -->|否| ReleaseTaskLockEnd[释放任务锁]
+        SendAlarm --> ReleaseTaskLockEnd
+    end
+
+    ReleaseTaskLockEnd --> TaskEnd

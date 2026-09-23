@@ -1,0 +1,29 @@
+{
+  "skill_name": "dev-design-api-def",
+  "evals": [
+    {
+      "id": 1,
+      "name": "single-param-api",
+      "prompt": "我需要创建一个 API 接口，用于根据订单号查询订单详情。只需要传入一个参数 orderId（字符串类型），返回订单的详细信息包括订单号、商品名称、金额、创建时间等。请按照规范输出 API 定义文档。",
+      "expected_output": "创建一个 POST 请求的 API 定义，包含 api-rest-001 编号，请求路径符合 Restful 风格，参数通过 body 传递，响应结构包含 code/message/data/success/timestamp，并附带 OpenAPI 3.0 JSON 定义。"
+    },
+    {
+      "id": 2,
+      "name": "multi-param-create-api",
+      "prompt": "帮我设计一个创建商品的接口，需要传入商品名称、价格、库存数量、分类ID等多个参数，返回创建成功的商品信息。需求编号是 PRD-001。",
+      "expected_output": "创建一个 POST 请求的 API 定义（因为入参超过1个），包含多个请求参数的表格说明，响应结构符合规范，文档命名为 PRD-001-API-Definition.md 格式，包含完整的 OpenAPI 3.0 JSON。"
+    },
+    {
+      "id": 3,
+      "name": "sensitive-data-api",
+      "prompt": "我需要设计一个用户登录接口，用户输入手机号和验证码，返回用户信息和登录 token。手机号属于敏感信息。",
+      "expected_output": "创建 POST 请求的 API 定义，明确标注因为包含敏感信息所以使用 POST，参数通过 body 传递，响应包含 token 字段，业务说明中说明安全相关逻辑。"
+    },
+    {
+      "id": 4,
+      "name": "batch-query-api",
+      "prompt": "设计一个批量查询用户列表的 API，支持分页查询，传入页码和每页数量，返回用户列表数据和总数。",
+      "expected_output": "POST 请求的 API 定义，请求参数包含 page 和 pageSize（或类似命名），响应 data 域包含列表和分页信息（pages、total），符合统一响应结构。"
+    }
+  ]
+}

@@ -49,6 +49,8 @@ replay_pid*
 *.ipr
 out/
 
+target/
+
 # Eclipse
 .project
 .classpath

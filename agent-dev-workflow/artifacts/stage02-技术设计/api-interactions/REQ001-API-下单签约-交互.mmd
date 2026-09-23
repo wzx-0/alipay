@@ -1,0 +1,44 @@
+sequenceDiagram
+    autonumber
+    actor U as 订阅用户
+    participant P_MINI as 订阅小程序页
+    participant S as 订阅服务端
+    participant AL as 支付宝平台
+
+    == 公域链路：租赁快捷下单插件下单并签约 ==
+    U->>P_MINI: 浏览商品，点击「立即订阅」进入插件下单页
+    U->>P_MINI: 确认订阅方案与押金，点击「提交订单」
+    Note over P_MINI: 插件触发商家下单回调，前端调用 my.checkBeforeAddOrder 获取 sourceId
+    P_MINI->>S: [A0102001] 创建租赁订单（sourceId/商品/订阅计划/押金）
+    activate S
+    Note over S: 前置校验通过后调用支付宝创单接口创建支付宝租赁订单，落库双边订单号（详见 API 逻辑图）
+    S-->>P_MINI: 返回 alipayOrderId / outOrderId / path
+    deactivate S
+    Note over P_MINI,AL: 插件自动唤起芝麻免押受理台
+    U->>AL: 确认押金冻结（芝麻免押）与代扣签约
+    AL-->>U: 展示签约受理结果
+    AL->>S: [A0108001] 异步通知（预授权冻结/代扣签约结果）
+    activate S
+    Note over S: 验签、notify_id 幂等去重后更新订单签约状态，订单进入待审核（详见 API 逻辑图）
+    S-->>AL: 应答 success
+    deactivate S
+    P_MINI-->>U: 跳转订单详情页（path），展示"待商家审核"
+
+    == 补签：受理台关闭或私域链路未完成签约 ==
+    Note over U,AL: 私域自建确认订单页下单后无插件自动唤起，统一从订单详情页补签
+    opt 用户关闭受理台或签约中断后再次发起
+        U->>P_MINI: 打开订单详情页，点击「继续签约」
+        P_MINI->>S: [A0103001] 获取签约串（outOrderId）
+        activate S
+        Note over S: 调用支付宝租赁订单签约接口获取 sign_str（详见 API 逻辑图）
+        S-->>P_MINI: 返回 signStr / signLaunchMethod
+        deactivate S
+        P_MINI->>AL: 携 signStr 唤起芝麻免押受理台
+        U->>AL: 确认押金冻结与代扣签约
+        AL->>S: [A0108001] 异步通知（签约结果）
+        activate S
+        Note over S: 验签幂等后更新订单签约状态（详见 API 逻辑图）
+        S-->>AL: 应答 success
+        deactivate S
+        P_MINI-->>U: 展示"签约完成，待商家审核"
+    end

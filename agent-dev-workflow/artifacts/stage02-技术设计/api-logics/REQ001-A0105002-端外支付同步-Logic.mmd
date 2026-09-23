@@ -1,0 +1,33 @@
+flowchart TD
+    Start([接收端外支付同步请求]) --> Validate{参数校验:payItems费项金额及RENT期号必填}
+    Validate -->|失败| ParamError[返回参数错误]
+    Validate -->|通过| AcquireLock[获取分布式锁:outOrderId维度]
+    AcquireLock -->|失败| LockError[返回订单处理中错误]
+    AcquireLock -->|成功| QueryOrder[SELECT tb_rent_order:订单状态]
+    QueryOrder --> OrderStatusCheck{订单处于可收款状态}
+    OrderStatusCheck -->|否| OrderStatusError[返回订单状态错误]
+    OrderStatusCheck -->|是| BatchQueryInstallment[BatchQuery tb_rent_order_installment:按期号集合查期次]
+    BatchQueryInstallment --> InstallmentCheck{期次校验:均待支付且金额等于应付减已付}
+    InstallmentCheck -->|失败| InstallmentError[返回期次校验错误]
+    InstallmentCheck -->|通过| TxBegin[开启事务]
+
+    subgraph 端外收款落库事务
+        TxBegin --> InsertPayRecord[Insert tb_rent_pay_record:pay_channel置OTHER且pay_status置成功]
+        InsertPayRecord --> BatchInsertPayItem[BatchInsert tb_rent_pay_item:费项明细]
+        BatchInsertPayItem --> BatchUpdateInstallment[BatchUpdate tb_rent_order_installment:置已支付并记paid_amount与actual_pay_time]
+        BatchUpdateInstallment --> TxCommit[提交事务]
+    end
+
+    TxCommit --> CallPaySync["调用：支付宝开放平台-alipay.commerce.rent.order.pay.sync|租赁订单支付主动同步"]
+    CallPaySync -->|成功| ReleaseLock[释放锁]
+    ReleaseLock --> BuildResp[构建响应:outTradeNo与payAmount]
+    BuildResp --> Success[返回成功]
+    CallPaySync -->|失败| Compensate[补偿:端外收款事实保留,记录同步失败告警转人工或任务重试pay.sync]
+    Compensate --> ReleaseLockFail[释放锁]
+    ReleaseLockFail --> FailResp[返回同步失败]
+    ParamError --> End([结束])
+    LockError --> End
+    OrderStatusError --> End
+    InstallmentError --> End
+    FailResp --> End
+    Success --> End

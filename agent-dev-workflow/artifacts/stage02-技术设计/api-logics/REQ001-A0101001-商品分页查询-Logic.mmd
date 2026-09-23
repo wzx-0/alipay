@@ -1,0 +1,20 @@
+flowchart TD
+    Start([接收商品分页查询请求]) --> Validate{参数校验:页码条数及条件结构}
+    Validate -->|失败| ParamError[返回参数错误]
+    Validate -->|通过| EnumCheck{查询条件枚举校验:goodsStatus与reportStatus}
+    EnumCheck -->|非法值| CondError[返回查询条件错误]
+    EnumCheck -->|通过| CacheCheck{查询缓存:key为查询条件摘要加页码}
+    CacheCheck -->|命中未过期| HitCache[返回缓存分页数据]
+    CacheCheck -->|未命中| PageQuery[SELECT分页查询:tb_rent_goods按条件过滤且create_time倒序,页容量上限100]
+    PageQuery --> EmptyCheck{本页是否有商品记录}
+    EmptyCheck -->|无记录| BuildEmpty[构建空分页结果]
+    EmptyCheck -->|有记录| BatchQuerySku[BatchQuery:SELECT tb_rent_goods_sku WHERE goods_id属于本页商品ID集合]
+    BatchQuerySku --> GroupSku[按goodsId分组组装商品与SKU树]
+    BuildEmpty --> BuildResult[构建响应:total与current与size与pages与records]
+    GroupSku --> BuildResult
+    BuildResult --> CacheWrite[写缓存:过期时间60秒]
+    CacheWrite --> Success[返回成功]
+    ParamError --> End([结束])
+    CondError --> End
+    HitCache --> End
+    Success --> End

@@ -1,0 +1,25 @@
+flowchart TD
+    Start([定时触发:每小时整点]) --> AcquireTaskLock[获取分布式锁:防多实例重复执行]
+    AcquireTaskLock -->|失败| SkipEnd([本轮跳过:已有实例执行中])
+    AcquireTaskLock -->|成功| StreamScan[流式查询到期待扣期次:SELECT tb_rent_order_installment WHERE bill_status待支付且plan_pay_time不晚于当前时间,关联订单RECEIVED,游标分批读取]
+    StreamScan --> HasDataCheck{扫描到待扣期次}
+    HasDataCheck -->|无| ReleaseTaskLock[释放任务锁]
+    ReleaseTaskLock --> TaskEnd([本轮任务结束])
+    HasDataCheck -->|有| BatchProcess[按批次组装代扣任务:每期次生成一笔代扣支付单]
+
+    subgraph 分批代扣处理
+        BatchProcess --> CallDeduct["调用：支付领域-A0105001|订单支付"]
+        CallDeduct -->|受理成功| MarkBatchDone[记录本批代扣受理结果]
+        CallDeduct -->|受理失败| MarkBatchFail[记录失败期次:bill_status置支付失败并计入失败清单]
+        MarkBatchDone --> NextBatch{还有下一批}
+        MarkBatchFail --> NextBatch
+        NextBatch -->|是| CallDeduct
+        NextBatch -->|否| Summarize[汇总:成功受理笔数与失败笔数]
+    end
+
+    Summarize --> AsyncNote[代扣终态:由异步通知A0108001确认支付结果并更新期次]
+    AsyncNote --> FailAlarmCheck{存在失败期次}
+    FailAlarmCheck -->|是| SendAlarm[发送告警:失败清单通知运营复核]
+    FailAlarmCheck -->|否| ReleaseTaskLockEnd[释放任务锁]
+    SendAlarm --> ReleaseTaskLockEnd
+    ReleaseTaskLockEnd --> TaskEnd

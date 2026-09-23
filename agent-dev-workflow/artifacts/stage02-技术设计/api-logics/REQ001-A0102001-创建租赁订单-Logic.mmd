@@ -1,0 +1,39 @@
+flowchart TD
+    Start([接收创建租赁订单请求]) --> Validate{参数校验:orderType枚举,RENT必填商品SKU押金租期计划,RELET与BUYOUT必填原订单号}
+    Validate -->|失败| ParamError[返回参数错误]
+    Validate -->|通过| AcquireLock[获取分布式锁:buyerOpenId维度防重复提交]
+    AcquireLock -->|失败| LockError[返回请求处理中错误]
+    AcquireLock -->|成功| OrderTypeCheck{orderType类型分支}
+    OrderTypeCheck -->|RENT| QueryGoods[SELECT tb_rent_goods与tb_rent_goods_sku:商品SKU及提报状态]
+    QueryGoods --> GoodsCheck{商品已上架且已提报商品库}
+    GoodsCheck -->|否| GoodsError[返回商品不可售错误]
+    OrderTypeCheck -->|RELET或BUYOUT| QueryOrigin[SELECT tb_rent_order与tb_rent_order_installment:原订单及期次]
+    QueryOrigin --> OriginCheck{原订单状态合法:RELET须订阅中,BUYOUT须期次全部支付}
+    OriginCheck -->|否| OriginError[返回原订单状态错误]
+    GoodsCheck -->|是| PriceCheck{价格校验:押金大于0且订单总价等于运费加增值服务费加各期订阅金额之和}
+    OriginCheck -->|是| PriceCheck
+    PriceCheck -->|失败| PriceError[返回价格校验错误]
+    PriceCheck -->|通过| TxBegin[开启事务]
+
+    subgraph 本地创单事务
+        TxBegin --> InsertOrder[Insert tb_rent_order:状态置CREATED并生成outOrderId]
+        InsertOrder --> BatchInsertItem[BatchInsert tb_rent_order_item:商品创单快照]
+        BatchInsertItem --> BatchInsertPlan[BatchInsert tb_rent_order_installment:期次计划置待支付]
+        BatchInsertPlan --> TxCommit[提交事务]
+    end
+
+    TxCommit --> CallAlipayCreate["调用：支付宝开放平台-alipay.commerce.rent.order.create|创建租赁订单"]
+    CallAlipayCreate -->|成功| FillAlipayOrderId[Update tb_rent_order:回填alipay_order_id]
+    FillAlipayOrderId --> ReleaseLock[释放锁]
+    ReleaseLock --> BuildResp[构建响应:alipayOrderId与outOrderId与path]
+    BuildResp --> Success[返回成功]
+    CallAlipayCreate -->|失败| Compensate[补偿:Update tb_rent_order状态置CLOSED并记录失败原因]
+    Compensate --> ReleaseLockFail[释放锁]
+    ReleaseLockFail --> FailResp[返回创单失败]
+    ParamError --> End([结束])
+    LockError --> End
+    GoodsError --> End
+    OriginError --> End
+    PriceError --> End
+    FailResp --> End
+    Success --> End

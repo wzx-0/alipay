@@ -1,0 +1,59 @@
+sequenceDiagram
+    autonumber
+    actor UM as 订阅用户
+    actor U as 商家运营
+    participant P_MINI as 订阅订单小程序页
+    participant P_PC as 订单履约PC页
+    participant S as 订阅服务端
+
+    == 交车同步 ==
+    U->>P_PC: 完成车辆选配与订阅合同签署后点击「确认交车」
+    P_PC->>P_PC: 弹出确认框"确认正式启动车辆交付？"
+    U->>P_PC: 点击「确认」
+    P_PC->>S: [A0102004] 订单履约同步（MERCHANT_DELIVERY_SEND）
+    activate S
+    Note over S: 调用支付宝 fulfillment.send 同步发货，订单状态变更为 DELIVERED（详见 API 逻辑图）
+    S-->>P_PC: 返回同步结果
+    deactivate S
+    P_PC-->>U: 提示"交车已同步，订单进入车辆交付中"
+
+    == 用户确认收车 ==
+    UM->>P_MINI: 收到车辆后在订阅订单页点击「确认收车」
+    P_MINI->>P_MINI: 弹出确认框"请确认已收到车辆"
+    UM->>P_MINI: 点击「确认」
+    P_MINI->>S: [A0102005] 订单收货确认（MERCHANT_DELIVERY_RECEIVED）
+    activate S
+    Note over S: 调用支付宝 fulfillment.receive，订单状态变更为 RECEIVED（订阅中）（详见 API 逻辑图）
+    S-->>P_MINI: 返回确认结果
+    deactivate S
+    P_MINI-->>UM: 提示"订阅正式生效"
+
+    == 用户发起还车 ==
+    UM->>P_MINI: 点击「申请还车」
+    P_MINI->>P_MINI: 弹出还车须知确认框
+    UM->>P_MINI: 点击「确认还车」
+    P_MINI->>S: [A0102004] 订单履约同步（USER_DELIVERY_SEND）
+    activate S
+    Note over S: 调用支付宝 fulfillment.send，订单状态变更为 RETURN_DELIVERED（详见 API 逻辑图）
+    S-->>P_MINI: 返回同步结果
+    deactivate S
+    P_MINI-->>UM: 提示"还车申请已提交，请按约定归还车辆"
+
+    == 商家验收与订单完结 ==
+    U->>P_PC: 车辆验收无损后点击「确认收车」
+    P_PC->>S: [A0102005] 订单收货确认（USER_DELIVERY_RECEIVED）
+    activate S
+    Note over S: 调用支付宝 fulfillment.receive，订单状态变更为 RETURN_RECEIVED，此时押金尚未释放（详见 API 逻辑图）
+    S-->>P_PC: 返回确认结果
+    deactivate S
+    P_PC-->>U: 提示"验收收车已确认"
+
+    U->>P_PC: 完成押金退还/赔付扣款结算后点击「订单完结」
+    P_PC->>P_PC: 弹出完结方式选择框（到期归还/提前归还/其他完结）
+    U->>P_PC: 选择完结方式，点击「确认完结」
+    P_PC->>S: [A0102006] 订单完结（finishStatus）
+    activate S
+    Note over S: 调用支付宝 fulfillment.finish，系统自动解冻预授权并解除代扣协议（详见 API 逻辑图）
+    S-->>P_PC: 返回完结结果
+    deactivate S
+    P_PC-->>U: 提示"订单已完结"

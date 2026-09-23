@@ -1,0 +1,14 @@
+flowchart TD
+    Start([接收获取签约串请求]) --> Validate{参数校验:outOrderId必填}
+    Validate -->|失败| ParamError[返回参数错误]
+    Validate -->|通过| QueryOrderSign[SELECT tb_rent_order与tb_rent_order_sign:订单及签约状态]
+    QueryOrderSign --> StatusCheck{状态校验:订单未完结且预授权未完成冻结}
+    StatusCheck -->|不满足| StatusError[返回无需签约或状态错误]
+    StatusCheck -->|满足| CallAlipaySign["调用：支付宝开放平台-alipay.commerce.rent.order.sign|租赁订单签约"]
+    CallAlipaySign -->|成功| BuildResp[构建响应:signStr与signLaunchMethod]
+    BuildResp --> Success[返回成功]
+    CallAlipaySign -->|失败| SignError[返回签约串获取失败]
+    ParamError --> End([结束])
+    StatusError --> End
+    SignError --> End
+    Success --> End

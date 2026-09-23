@@ -1,0 +1,42 @@
+sequenceDiagram
+    autonumber
+    actor U as 审核运营
+    participant P_PC as 订单审核PC页
+    participant S as 订阅服务端
+
+    U->>P_PC: 在待审核订单列表点击「审核」
+    P_PC->>S: [A0102003] 订单详情查询
+    activate S
+    S-->>P_PC: 返回订单详情（商品明细/订阅计划/签约状态）
+    deactivate S
+    P_PC-->>U: 展示订单详情页
+
+    U->>P_PC: 点击「风控查询」按钮
+    P_PC->>S: [A0104001] 风控咨询查询
+    activate S
+    Note over S: 调用支付宝 risk.consult 查询综合风险等级并落库留痕（详见 API 逻辑图）
+    S-->>P_PC: 返回 riskLevel（T1~T10）与审核建议
+    deactivate S
+    P_PC-->>U: 展示风险等级与建议（T1-T4通过/T5-T6综合判断/T7-T10拒绝）
+
+    U->>P_PC: 选择审核结论（通过/拒绝）
+    alt 审核拒绝
+        U->>P_PC: 填写拒绝原因
+    end
+    U->>P_PC: 点击「提交审核结论」
+    P_PC->>P_PC: 弹出确认框"确认提交审核结论？"
+    U->>P_PC: 点击「确认」
+    P_PC->>S: [A0104002] 提交风控审核结论
+    activate S
+    alt 审核通过
+        Note over S: 调用支付宝 fulfillment.approve 推动订单至 APPROVED（详见 API 逻辑图）
+    else 审核拒绝
+        Note over S: 调用支付宝 order.close 关闭订单（详见 API 逻辑图）
+    end
+    S-->>P_PC: 返回提交结果
+    deactivate S
+    P_PC-->>U: 提示"审核结论已提交"
+
+    opt 审核拒绝场景
+        P_PC-->>U: 展示"订单已关闭"
+    end

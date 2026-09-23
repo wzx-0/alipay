@@ -1,0 +1,31 @@
+sequenceDiagram
+    autonumber
+    actor U as 运营人员
+    participant P_PC as 商品管理PC页
+    participant S as 订阅服务端
+
+    U->>P_PC: 点击「商品管理」菜单进入商品列表页
+    P_PC->>S: [A0101001] 商品分页查询（默认第1页）
+    activate S
+    S-->>P_PC: 返回商品分页数据（含支付宝商品库映射与提报状态）
+    deactivate S
+    P_PC-->>U: 渲染商品列表
+
+    opt 条件筛选
+        U->>P_PC: 输入商品名称，选择商品状态/提报状态
+        U->>P_PC: 点击「查询」按钮
+        P_PC->>S: [A0101001] 商品分页查询（携带筛选条件）
+        activate S
+        S-->>P_PC: 返回筛选后的分页数据
+        deactivate S
+        P_PC-->>U: 刷新商品列表
+    end
+
+    opt 列表翻页
+        U->>P_PC: 点击「下一页」
+        P_PC->>S: [A0101001] 商品分页查询（pageNo+1）
+        activate S
+        S-->>P_PC: 返回对应页数据
+        deactivate S
+        P_PC-->>U: 刷新商品列表
+    end

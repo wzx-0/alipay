@@ -1,0 +1,33 @@
+flowchart TD
+    Start([接收风控审核结论请求]) --> Validate{参数校验:auditResult枚举,拒绝时rejectReason必填}
+    Validate -->|失败| ParamError[返回参数错误]
+    Validate -->|通过| AcquireLock[获取分布式锁:outOrderId维度]
+    AcquireLock -->|失败| LockError[返回订单处理中错误]
+    AcquireLock -->|成功| QueryOrder[SELECT tb_rent_order与tb_risk_audit:订单状态与历史审核记录]
+    QueryOrder --> StatusCheck{状态校验:订单SIGNED且无已同步审核结论}
+    StatusCheck -->|非法| StatusError[返回订单状态错误]
+    StatusCheck -->|重复提交| ReturnCached[返回已有审核结果]
+    StatusCheck -->|合法| TxBegin[开启事务]
+    TxBegin --> InsertAudit[Insert tb_risk_audit:audit_result与audit_user与audit_time,sync_status待同步]
+    InsertAudit --> TxCommit[提交事务]
+    TxCommit --> AuditBranch{审核结论分支}
+    AuditBranch -->|通过| CallApprove["调用：支付宝开放平台-alipay.commerce.rent.order.fulfillment.approve|履约审核通过"]
+    AuditBranch -->|拒绝| CallClose["调用：支付宝开放平台-alipay.commerce.rent.order.close|租赁订单关闭"]
+    CallApprove -->|成功| TxBegin2[开启同步事务]
+    TxBegin2 --> UpdateAuditApprove[Update tb_risk_audit置已同步approve,Update tb_rent_order置APPROVED]
+    UpdateAuditApprove --> TxCommit2[提交同步事务]
+    TxCommit2 --> ReleaseLock[释放锁]
+    CallClose -->|成功| TxBegin3[开启同步事务]
+    TxBegin3 --> UpdateAuditClose[Update tb_risk_audit置已同步close,Update tb_rent_order置CLOSED]
+    UpdateAuditClose --> TxCommit3[提交同步事务]
+    TxCommit3 --> ReleaseLock
+    ReleaseLock --> Success[返回成功]
+    CallApprove -->|失败| Compensate[补偿:审核记录保持待同步并记录告警,由人工或任务重试同步]
+    CallClose -->|失败| Compensate
+    Compensate --> ReleaseLockFail[释放锁]
+    ReleaseLockFail --> FailResp[返回同步失败可重试]
+    ParamError --> End([结束])
+    LockError --> End
+    StatusError --> End
+    FailResp --> End
+    Success --> End

@@ -1,0 +1,79 @@
+sequenceDiagram
+    autonumber
+    actor U as 售后运营
+    participant P_PC as 售后管理PC页
+    participant S as 订阅服务端
+    participant AL as 支付宝平台
+
+    U->>P_PC: 点击「售后管理」菜单进入售后列表页
+    P_PC->>S: [A0107002] 售后单分页查询
+    activate S
+    S-->>P_PC: 返回售后单分页列表
+    deactivate S
+    P_PC-->>U: 渲染售后单列表
+
+    == 创建售后单 ==
+    opt 商家发起取消订单/赔付售后
+        U->>P_PC: 点击「新建售后单」
+        P_PC->>P_PC: 弹出创建弹窗（选择售后类型与原因编码、填写说明、上传凭证、填写赔付金额）
+        U->>P_PC: 填写完成，点击「提交」
+        P_PC->>S: [A0107001] 创建售后单
+        activate S
+        Note over S: 校验订单状态与发起时限后调用支付宝 aftersale.create（详见 API 逻辑图）
+        S-->>P_PC: 返回 outAftersaleId / alipayAftersaleId
+        deactivate S
+        P_PC-->>U: 提示"售后单已创建"，刷新列表
+    end
+
+    == 售后处理 ==
+    alt 取消订单类售后
+        U->>P_PC: 在售后单上点击「退款」
+        P_PC->>P_PC: 弹出退款弹窗（已支付费项须全额退回）
+        U->>P_PC: 点击「确认退款」
+        P_PC->>S: [A0105003] 交易退款（全额退回已支付费项）
+        activate S
+        Note over S: 调用支付宝 alipay.trade.refund 完成费项退款（详见 API 逻辑图）
+        S-->>P_PC: 返回退款结果
+        deactivate S
+        P_PC-->>U: 提示"退款完成"
+    else 赔付类售后（须在订单完结前发起）
+        U->>P_PC: 点击「收取赔付金」
+        P_PC->>P_PC: 弹出确认框"将通过代扣方式收取赔付金"
+        U->>P_PC: 点击「确认」
+        P_PC->>S: [A0105001] 订单支付（RENT_DEDUCT，INDEMNITY 费项）
+        activate S
+        Note over S: 调用支付宝 order.pay 代扣收取赔付金/违约金（详见 API 逻辑图）
+        S-->>P_PC: 返回收取结果
+        deactivate S
+        P_PC-->>U: 提示"赔付金收取成功"
+    end
+
+    opt 用户在私域发起取消且商家同意
+        U->>P_PC: 在售后单上点击「同意取消」
+        P_PC->>S: [A0107003] 售后处理（USER_CANCEL_APPLY）
+        activate S
+        Note over S: 调用支付宝 aftersale.confirm 同步用户取消申请（详见 API 逻辑图）
+        S-->>P_PC: 返回处理结果
+        deactivate S
+        P_PC-->>U: 提示"已同步用户取消申请"
+    end
+
+    U->>P_PC: 售后处理完毕后点击「售后完结」
+    P_PC->>P_PC: 显示"确认完结售后？取消类售后将同步关闭订单"确认框
+    U->>P_PC: 点击「确认」
+    P_PC->>S: [A0107003] 售后处理（AFTERSALE_FINISH）
+    activate S
+    Note over S: 调用支付宝 aftersale.confirm 同步售后终态，取消类售后关闭关联订单（详见 API 逻辑图）
+    S-->>P_PC: 返回处理结果
+    deactivate S
+    P_PC-->>U: 提示"售后已完结"，刷新列表
+
+    == 支付宝侧售后消息 ==
+    opt 支付宝推送售后状态变更/用户取消申请
+        AL->>S: [A0108001] 异步通知（售后消息 aftersale.notify）
+        activate S
+        Note over S: 验签、幂等去重后更新售后单状态并生成待办（详见 API 逻辑图）
+        S-->>AL: 应答 success
+        deactivate S
+        U->>P_PC: 在售后列表查看支付宝侧售后动态并处理
+    end

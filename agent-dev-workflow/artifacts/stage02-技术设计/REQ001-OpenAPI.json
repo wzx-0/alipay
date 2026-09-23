@@ -1,0 +1,1335 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "汽车订阅支付宝对接 API",
+    "description": "需求编号 REQ001（PRD-REQ001-汽车订阅支付宝对接）。业务领域编码 01=汽车订阅；模块编码：01-商品 02-订单 03-签约 04-风控 05-支付 07-售后 08-通知网关。金额统一为 String（元，2位小数），表主键 ID 统一为 String。除 /api/v1/callback/alipay/notify 外，响应均为统一结构 {code,message,data,success,timestamp}。",
+    "version": "v1.0"
+  },
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
+  "tags": [
+    { "name": "商品模块", "description": "M1 商品与商品库" },
+    { "name": "订单模块", "description": "M2 订单" },
+    { "name": "签约模块", "description": "M3 签约与芝麻免押" },
+    { "name": "风控模块", "description": "M4 风控审核" },
+    { "name": "支付模块", "description": "M5 支付与扣款" },
+    { "name": "售后模块", "description": "M7 售后" },
+    { "name": "通知网关", "description": "横切：支付宝异步通知统一接收" }
+  ],
+  "paths": {
+    "/rent/goods/page": {
+      "post": {
+        "tags": ["商品模块"],
+        "summary": "A0101001 商品分页查询",
+        "operationId": "pageRentGoods",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GoodsPageRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "交易成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponseBase" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/GoodsPageData" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rent/order/create": {
+      "post": {
+        "tags": ["订单模块"],
+        "summary": "A0102001 创建租赁订单",
+        "operationId": "createRentOrder",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/OrderCreateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "交易成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponseBase" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/OrderCreateData" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rent/order/page": {
+      "post": {
+        "tags": ["订单模块"],
+        "summary": "A0102002 订单分页查询",
+        "operationId": "pageRentOrder",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/OrderPageRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "交易成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponseBase" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/OrderPageData" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rent/order/detail": {
+      "post": {
+        "tags": ["订单模块"],
+        "summary": "A0102003 订单详情查询",
+        "operationId": "getRentOrderDetail",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/OrderDetailRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "交易成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponseBase" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/OrderDetailData" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rent/order/fulfillment/send": {
+      "post": {
+        "tags": ["订单模块"],
+        "summary": "A0102004 订单履约同步（交车/还车）",
+        "operationId": "sendFulfillment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/FulfillmentSendRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/EmptyDataResponse" }
+        }
+      }
+    },
+    "/rent/order/fulfillment/receive": {
+      "post": {
+        "tags": ["订单模块"],
+        "summary": "A0102005 订单收货确认",
+        "operationId": "receiveFulfillment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/FulfillmentReceiveRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/EmptyDataResponse" }
+        }
+      }
+    },
+    "/rent/order/fulfillment/finish": {
+      "post": {
+        "tags": ["订单模块"],
+        "summary": "A0102006 订单完结",
+        "operationId": "finishFulfillment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/OrderFinishRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/EmptyDataResponse" }
+        }
+      }
+    },
+    "/rent/order/close": {
+      "post": {
+        "tags": ["订单模块"],
+        "summary": "A0102007 订单关闭",
+        "operationId": "closeRentOrder",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/OrderCloseRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/EmptyDataResponse" }
+        }
+      }
+    },
+    "/rent/order/modify": {
+      "post": {
+        "tags": ["订单模块"],
+        "summary": "A0102008 修改租期",
+        "operationId": "modifyRentOrder",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/OrderModifyRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/EmptyDataResponse" }
+        }
+      }
+    },
+    "/rent/order/sign": {
+      "post": {
+        "tags": ["签约模块"],
+        "summary": "A0103001 获取签约串",
+        "operationId": "getRentOrderSign",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/OrderSignRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "交易成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponseBase" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/OrderSignData" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rent/risk/consult": {
+      "post": {
+        "tags": ["风控模块"],
+        "summary": "A0104001 风控咨询查询",
+        "operationId": "consultRentRisk",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RiskConsultRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "交易成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponseBase" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/RiskConsultData" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rent/risk/audit": {
+      "post": {
+        "tags": ["风控模块"],
+        "summary": "A0104002 提交风控审核结论",
+        "operationId": "auditRentRisk",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RiskAuditRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/EmptyDataResponse" }
+        }
+      }
+    },
+    "/rent/order/pay": {
+      "post": {
+        "tags": ["支付模块"],
+        "summary": "A0105001 订单支付",
+        "operationId": "payRentOrder",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/OrderPayRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "交易成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponseBase" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/OrderPayData" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rent/order/pay/sync": {
+      "post": {
+        "tags": ["支付模块"],
+        "summary": "A0105002 端外支付同步",
+        "operationId": "syncRentOrderPay",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PaySyncRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "交易成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponseBase" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/PaySyncData" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rent/refund": {
+      "post": {
+        "tags": ["支付模块"],
+        "summary": "A0105003 交易退款",
+        "operationId": "refundRentOrder",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RefundRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/EmptyDataResponse" }
+        }
+      }
+    },
+    "/rent/pay/record/page": {
+      "post": {
+        "tags": ["支付模块"],
+        "summary": "A0105004 支付流水分页查询",
+        "operationId": "pagePayRecord",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PayRecordPageRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "交易成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponseBase" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/PayRecordPageData" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rent/aftersale/create": {
+      "post": {
+        "tags": ["售后模块"],
+        "summary": "A0107001 创建售后单",
+        "operationId": "createAftersale",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AftersaleCreateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "交易成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponseBase" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/AftersaleCreateData" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rent/aftersale/page": {
+      "post": {
+        "tags": ["售后模块"],
+        "summary": "A0107002 售后单分页查询",
+        "operationId": "pageAftersale",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AftersalePageRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "交易成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponseBase" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/AftersalePageData" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rent/aftersale/confirm": {
+      "post": {
+        "tags": ["售后模块"],
+        "summary": "A0107003 售后处理",
+        "operationId": "confirmAftersale",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AftersaleConfirmRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/EmptyDataResponse" }
+        }
+      }
+    },
+    "/callback/alipay/notify": {
+      "post": {
+        "tags": ["通知网关"],
+        "summary": "A0108001 支付宝异步通知接收",
+        "description": "统一接收支付宝异步通知（冻结/支付/售后/订单变更），验签+notify_id幂等+落库分发。响应遵循支付宝协议返回文本 success，不适用统一 JSON 响应结构。",
+        "operationId": "receiveAlipayNotify",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": { "$ref": "#/components/schemas/AlipayNotifyRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "处理成功返回文本 success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "enum": ["success", "fail"]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "responses": {
+      "EmptyDataResponse": {
+        "description": "交易成功（data为空）",
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                { "$ref": "#/components/schemas/ApiResponseBase" },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "nullable": true
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "ApiResponseBase": {
+        "type": "object",
+        "description": "统一响应外层结构",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "响应码，成功为SY000000",
+            "example": "SY000000"
+          },
+          "message": {
+            "type": "string",
+            "description": "响应信息",
+            "example": "交易成功"
+          },
+          "success": {
+            "type": "boolean",
+            "description": "是否成功"
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "响应时间戳（毫秒）",
+            "example": "1772775292343"
+          }
+        },
+        "required": ["code", "message", "success", "timestamp"]
+      },
+      "PageParam": {
+        "type": "object",
+        "properties": {
+          "pageNo": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "description": "页码"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "每页条数"
+          }
+        },
+        "required": ["pageNo", "pageSize"]
+      },
+      "PageMeta": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int64",
+            "description": "总条数"
+          },
+          "current": {
+            "type": "integer",
+            "format": "int64",
+            "description": "当前页码"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64",
+            "description": "每页条数"
+          },
+          "pages": {
+            "type": "integer",
+            "format": "int64",
+            "description": "总页数"
+          }
+        },
+        "required": ["total", "current", "size", "pages"]
+      },
+      "GoodsPageRequest": {
+        "type": "object",
+        "allOf": [{ "$ref": "#/components/schemas/PageParam" }],
+        "properties": {
+          "params": {
+            "type": "object",
+            "description": "查询条件",
+            "properties": {
+              "goodsName": {
+                "type": "string",
+                "maxLength": 200,
+                "description": "商品名称，模糊匹配"
+              },
+              "goodsStatus": {
+                "type": "string",
+                "enum": ["0", "1"],
+                "description": "字典D10013：0-下架 1-上架"
+              },
+              "reportStatus": {
+                "type": "string",
+                "enum": ["0", "1", "2", "3"],
+                "description": "字典D10012：0-未提报 1-提报中 2-已提报 3-提报失败"
+              }
+            }
+          }
+        },
+        "required": ["params"]
+      },
+      "GoodsSkuVO": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "SKU ID（雪花ID）" },
+          "outSkuId": { "type": "string", "description": "支付宝商品库SKU ID" },
+          "skuName": { "type": "string", "description": "SKU名称（订阅套餐描述）" },
+          "durationDays": { "type": "integer", "format": "int32", "description": "租期时长（天）" },
+          "salePrice": { "type": "string", "description": "SKU售价（元，2位小数）" },
+          "skuStatus": { "type": "string", "enum": ["0", "1"], "description": "字典D10013：0-下架 1-上架" }
+        },
+        "required": ["id", "skuName", "durationDays", "salePrice", "skuStatus"]
+      },
+      "GoodsVO": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "商品ID（雪花ID）" },
+          "goodsCode": { "type": "string", "maxLength": 64, "description": "商品编码" },
+          "goodsName": { "type": "string", "maxLength": 200, "description": "商品名称" },
+          "outItemId": { "type": "string", "description": "支付宝商品库商品ID，未提报为空" },
+          "salePrice": { "type": "string", "description": "商品售价（元，2位小数）" },
+          "itemValue": { "type": "string", "description": "商品价值（元，2位小数）" },
+          "durationDays": { "type": "integer", "format": "int32", "description": "标准租期（天）" },
+          "reportStatus": { "type": "string", "enum": ["0", "1", "2", "3"], "description": "字典D10012 提报状态" },
+          "goodsStatus": { "type": "string", "enum": ["0", "1"], "description": "字典D10013 商品状态" },
+          "skuList": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/GoodsSkuVO" }
+          }
+        },
+        "required": ["id", "goodsCode", "goodsName", "salePrice", "reportStatus", "goodsStatus", "skuList"]
+      },
+      "GoodsPageData": {
+        "type": "object",
+        "allOf": [{ "$ref": "#/components/schemas/PageMeta" }],
+        "properties": {
+          "records": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/GoodsVO" }
+          }
+        },
+        "required": ["records"]
+      },
+      "RentPlanInstallment": {
+        "type": "object",
+        "properties": {
+          "installmentNo": { "type": "integer", "format": "int32", "minimum": 1, "description": "期号，从1递增" },
+          "installmentPrice": { "type": "string", "description": "当期订阅金额（元，2位小数），除首尾期外金额需一致" },
+          "planPayTime": { "type": "string", "description": "计划扣款时间 yyyy-MM-dd HH:mm:ss" },
+          "buyoutPrice": { "type": "string", "description": "到期购买金额，仅最后一期传入" }
+        },
+        "required": ["installmentNo", "installmentPrice", "planPayTime"]
+      },
+      "RentPlanInfo": {
+        "type": "object",
+        "properties": {
+          "rentStartTime": { "type": "string", "description": "租赁开始时间 yyyy-MM-dd HH:mm:ss" },
+          "rentEndTime": { "type": "string", "description": "租赁结束时间 yyyy-MM-dd HH:mm:ss" },
+          "installments": {
+            "type": "array",
+            "maxItems": 36,
+            "items": { "$ref": "#/components/schemas/RentPlanInstallment" }
+          }
+        },
+        "required": ["rentStartTime", "rentEndTime", "installments"]
+      },
+      "ShopInfo": {
+        "type": "object",
+        "properties": {
+          "shopName": { "type": "string", "maxLength": 100, "description": "门店名称" },
+          "shopAddress": { "type": "string", "maxLength": 300, "description": "门店地址" },
+          "shopTel": { "type": "string", "description": "门店电话" }
+        }
+      },
+      "ReceiverInfo": {
+        "type": "object",
+        "properties": {
+          "receiverName": { "type": "string", "maxLength": 64, "description": "收货人姓名" },
+          "receiverTel": { "type": "string", "description": "收货人电话" },
+          "detailedAddress": { "type": "string", "maxLength": 300, "description": "详细地址" }
+        }
+      },
+      "OrderCreateRequest": {
+        "type": "object",
+        "properties": {
+          "orderType": {
+            "type": "string",
+            "enum": ["RENT", "RELET", "BUYOUT"],
+            "description": "订单类型：首次订阅/续订/到期购买"
+          },
+          "sourceId": { "type": "string", "maxLength": 128, "description": "前端 my.checkBeforeAddOrder 返回的 sourceId" },
+          "buyerOpenId": { "type": "string", "maxLength": 64, "description": "买家支付宝 openId" },
+          "goodsId": { "type": "string", "description": "商品ID（雪花ID），orderType=RENT 时必填" },
+          "skuId": { "type": "string", "description": "SKU ID（雪花ID），orderType=RENT 时必填" },
+          "quantity": { "type": "integer", "format": "int32", "minimum": 1, "maximum": 99, "description": "购买数量，orderType=RENT 时必填" },
+          "originOrderId": { "type": "string", "maxLength": 64, "description": "原订阅订单号，orderType=RELET/BUYOUT 时必填" },
+          "depositPrice": { "type": "string", "description": "押金金额（元，>0），orderType=RENT 时必填，作为预授权冻结金额" },
+          "freight": { "type": "string", "description": "运费（元，2位小数）" },
+          "additionalPrice": { "type": "string", "description": "增值服务费（元，2位小数）" },
+          "rentPlanInfo": { "$ref": "#/components/schemas/RentPlanInfo" },
+          "shopInfo": { "$ref": "#/components/schemas/ShopInfo" },
+          "receiverInfo": { "$ref": "#/components/schemas/ReceiverInfo" },
+          "merchantExtInfo": { "type": "object", "description": "商家自定义透传数据" }
+        },
+        "required": ["orderType", "sourceId", "buyerOpenId"]
+      },
+      "OrderCreateData": {
+        "type": "object",
+        "properties": {
+          "alipayOrderId": { "type": "string", "description": "支付宝订单ID order_id" },
+          "outOrderId": { "type": "string", "description": "商家侧订单号 out_order_id" },
+          "path": { "type": "string", "description": "订单详情页路径（支付完成后跳转）" }
+        },
+        "required": ["alipayOrderId", "outOrderId", "path"]
+      },
+      "OrderPageRequest": {
+        "type": "object",
+        "allOf": [{ "$ref": "#/components/schemas/PageParam" }],
+        "properties": {
+          "params": {
+            "type": "object",
+            "properties": {
+              "outOrderId": { "type": "string", "maxLength": 64, "description": "商家侧订单号" },
+              "alipayOrderId": { "type": "string", "maxLength": 64, "description": "支付宝订单ID" },
+              "orderType": { "type": "string", "enum": ["RENT", "RELET", "BUYOUT"] },
+              "orderStatus": {
+                "type": "string",
+                "enum": ["CREATED", "SIGNED", "APPROVED", "DELIVERED", "RECEIVED", "RETURN_DELIVERED", "RETURN_RECEIVED", "FINISHED", "CLOSED"],
+                "description": "订单状态"
+              },
+              "sourceChannel": { "type": "string", "enum": ["0", "1"], "description": "字典D10001：1-公域 0-私域" },
+              "buyerId": { "type": "string", "maxLength": 32, "description": "买家支付宝userId" },
+              "createTimeBegin": { "type": "string", "description": "创建时间起 yyyy-MM-dd HH:mm:ss" },
+              "createTimeEnd": { "type": "string", "description": "创建时间止 yyyy-MM-dd HH:mm:ss" }
+            }
+          }
+        },
+        "required": ["params"]
+      },
+      "OrderListItemVO": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "订单ID（雪花ID）" },
+          "outOrderId": { "type": "string", "description": "商家侧订单号" },
+          "alipayOrderId": { "type": "string", "nullable": true, "description": "支付宝订单ID" },
+          "originOrderId": { "type": "string", "nullable": true, "description": "原订阅订单号" },
+          "orderType": { "type": "string", "enum": ["RENT", "RELET", "BUYOUT"] },
+          "orderStatus": {
+            "type": "string",
+            "enum": ["CREATED", "SIGNED", "APPROVED", "DELIVERED", "RECEIVED", "RETURN_DELIVERED", "RETURN_RECEIVED", "FINISHED", "CLOSED"]
+          },
+          "sourceChannel": { "type": "string", "enum": ["0", "1"], "description": "字典D10001" },
+          "title": { "type": "string", "description": "订单标题" },
+          "buyerOpenId": { "type": "string", "description": "买家openId" },
+          "orderPrice": { "type": "string", "description": "订单总价（元）" },
+          "depositPrice": { "type": "string", "description": "押金金额（元）" },
+          "rentStartTime": { "type": "string", "nullable": true, "description": "租赁开始时间" },
+          "rentEndTime": { "type": "string", "nullable": true, "description": "租赁结束时间" },
+          "createTime": { "type": "string", "description": "创建时间" }
+        },
+        "required": ["id", "outOrderId", "orderType", "orderStatus", "sourceChannel", "title", "buyerOpenId", "orderPrice", "depositPrice", "createTime"]
+      },
+      "OrderPageData": {
+        "type": "object",
+        "allOf": [{ "$ref": "#/components/schemas/PageMeta" }],
+        "properties": {
+          "records": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/OrderListItemVO" }
+          }
+        },
+        "required": ["records"]
+      },
+      "OrderDetailRequest": {
+        "type": "object",
+        "properties": {
+          "outOrderId": { "type": "string", "maxLength": 64, "description": "商家侧订单号" }
+        },
+        "required": ["outOrderId"]
+      },
+      "OrderVO": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "订单ID（雪花ID）" },
+          "outOrderId": { "type": "string", "description": "商家侧订单号" },
+          "alipayOrderId": { "type": "string", "nullable": true },
+          "originOrderId": { "type": "string", "nullable": true },
+          "orderType": { "type": "string", "enum": ["RENT", "RELET", "BUYOUT"] },
+          "orderStatus": {
+            "type": "string",
+            "enum": ["CREATED", "SIGNED", "APPROVED", "DELIVERED", "RECEIVED", "RETURN_DELIVERED", "RETURN_RECEIVED", "FINISHED", "CLOSED"]
+          },
+          "sourceChannel": { "type": "string", "enum": ["0", "1"] },
+          "title": { "type": "string" },
+          "buyerId": { "type": "string", "nullable": true, "description": "买家支付宝userId" },
+          "buyerOpenId": { "type": "string" },
+          "orderPrice": { "type": "string" },
+          "depositPrice": { "type": "string" },
+          "freight": { "type": "string", "nullable": true },
+          "additionalPrice": { "type": "string", "nullable": true },
+          "rentStartTime": { "type": "string", "nullable": true },
+          "rentEndTime": { "type": "string", "nullable": true },
+          "deliveryType": { "type": "string", "enum": ["SELFPICK"], "description": "汽车场景固定自提" },
+          "shopName": { "type": "string", "nullable": true },
+          "shopAddress": { "type": "string", "nullable": true },
+          "shopTel": { "type": "string", "nullable": true },
+          "receiverName": { "type": "string", "nullable": true },
+          "receiverTel": { "type": "string", "nullable": true },
+          "receiverAddress": { "type": "string", "nullable": true },
+          "protocolName": { "type": "string", "nullable": true },
+          "protocolPath": { "type": "string", "nullable": true },
+          "detailPath": { "type": "string", "nullable": true },
+          "finishStatus": { "type": "string", "nullable": true, "enum": ["USER_RETURNED", "USER_RETURNED_IN_ADVANCE", "OTHER"] },
+          "closeReasonCode": { "type": "string", "nullable": true },
+          "closeReasonDesc": { "type": "string", "nullable": true },
+          "deliveryTime": { "type": "string", "nullable": true },
+          "receiveTime": { "type": "string", "nullable": true },
+          "returnSendTime": { "type": "string", "nullable": true },
+          "returnReceiveTime": { "type": "string", "nullable": true },
+          "finishTime": { "type": "string", "nullable": true },
+          "closeTime": { "type": "string", "nullable": true },
+          "createTime": { "type": "string" }
+        },
+        "required": ["id", "outOrderId", "orderType", "orderStatus", "sourceChannel", "title", "buyerOpenId", "orderPrice", "depositPrice", "deliveryType", "createTime"]
+      },
+      "OrderItemVO": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "itemType": { "type": "string", "enum": ["CAR_ITEM"] },
+          "outItemId": { "type": "string" },
+          "outSkuId": { "type": "string", "nullable": true },
+          "itemName": { "type": "string" },
+          "itemDescription": { "type": "string", "nullable": true },
+          "salePrice": { "type": "string" },
+          "itemValue": { "type": "string", "nullable": true },
+          "itemCnt": { "type": "integer", "format": "int32", "minimum": 1 }
+        },
+        "required": ["id", "itemType", "outItemId", "itemName", "salePrice", "itemCnt"]
+      },
+      "InstallmentVO": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "installmentNo": { "type": "integer", "format": "int32", "minimum": 1 },
+          "installmentPrice": { "type": "string" },
+          "planPayTime": { "type": "string" },
+          "buyoutPrice": { "type": "string", "nullable": true },
+          "billStatus": { "type": "string", "enum": ["0", "1", "2", "3", "4"], "description": "字典D10002：0-待支付 1-支付中 2-已支付 3-支付失败 4-已关闭" },
+          "paidAmount": { "type": "string", "nullable": true },
+          "actualPayTime": { "type": "string", "nullable": true }
+        },
+        "required": ["id", "installmentNo", "installmentPrice", "planPayTime", "billStatus"]
+      },
+      "SignVO": {
+        "type": "object",
+        "properties": {
+          "signStatus": { "type": "string", "enum": ["0", "1", "2"], "description": "字典D10003：0-未签约 1-已签约 2-已解约" },
+          "freezeStatus": { "type": "string", "enum": ["0", "1", "2", "3"], "description": "字典D10004：0-未冻结 1-已冻结 2-已解冻 3-已转支付" },
+          "freezeAmount": { "type": "string", "nullable": true },
+          "deductStatus": { "type": "string", "enum": ["0", "1", "2"], "description": "字典D10005：0-未签约 1-已签约 2-已解除" },
+          "signTime": { "type": "string", "nullable": true },
+          "freezeTime": { "type": "string", "nullable": true },
+          "unfreezeTime": { "type": "string", "nullable": true }
+        },
+        "required": ["signStatus", "freezeStatus", "deductStatus"]
+      },
+      "OrderDetailData": {
+        "type": "object",
+        "properties": {
+          "order": { "$ref": "#/components/schemas/OrderVO" },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/OrderItemVO" }
+          },
+          "installments": {
+            "type": "array",
+            "nullable": true,
+            "description": "订阅计划期次，RENT订单返回",
+            "items": { "$ref": "#/components/schemas/InstallmentVO" }
+          },
+          "sign": { "$ref": "#/components/schemas/SignVO" }
+        },
+        "required": ["order", "items"]
+      },
+      "FulfillmentSendRequest": {
+        "type": "object",
+        "properties": {
+          "outOrderId": { "type": "string", "maxLength": 64 },
+          "operationType": {
+            "type": "string",
+            "enum": ["MERCHANT_DELIVERY_SEND", "USER_DELIVERY_SEND"],
+            "description": "商家发货交车/用户寄回还车"
+          }
+        },
+        "required": ["outOrderId", "operationType"]
+      },
+      "FulfillmentReceiveRequest": {
+        "type": "object",
+        "properties": {
+          "outOrderId": { "type": "string", "maxLength": 64 },
+          "receiveType": {
+            "type": "string",
+            "enum": ["MERCHANT_DELIVERY_RECEIVED", "USER_DELIVERY_RECEIVED"],
+            "description": "用户确认收车/商家验收收车"
+          }
+        },
+        "required": ["outOrderId", "receiveType"]
+      },
+      "OrderFinishRequest": {
+        "type": "object",
+        "properties": {
+          "outOrderId": { "type": "string", "maxLength": 64 },
+          "finishStatus": {
+            "type": "string",
+            "enum": ["USER_RETURNED", "USER_RETURNED_IN_ADVANCE", "OTHER"],
+            "description": "到期归还/提前归还/其他完结"
+          }
+        },
+        "required": ["outOrderId", "finishStatus"]
+      },
+      "OrderCloseRequest": {
+        "type": "object",
+        "properties": {
+          "outOrderId": { "type": "string", "maxLength": 64 },
+          "reasonCode": { "type": "string", "maxLength": 32, "description": "支付宝关单原因编码" },
+          "reasonDesc": { "type": "string", "maxLength": 200, "description": "关单原因描述" }
+        },
+        "required": ["outOrderId", "reasonCode"]
+      },
+      "OrderModifyInstallment": {
+        "type": "object",
+        "properties": {
+          "installmentNo": { "type": "integer", "format": "int32", "minimum": 1 },
+          "planPayTime": { "type": "string", "description": "新计划扣款时间 yyyy-MM-dd HH:mm:ss" }
+        },
+        "required": ["installmentNo", "planPayTime"]
+      },
+      "OrderModifyRequest": {
+        "type": "object",
+        "properties": {
+          "outOrderId": { "type": "string", "maxLength": 64 },
+          "rentStartTime": { "type": "string", "description": "租赁开始时间 yyyy-MM-dd HH:mm:ss" },
+          "rentEndTime": { "type": "string", "description": "租赁结束时间 yyyy-MM-dd HH:mm:ss" },
+          "installments": {
+            "type": "array",
+            "description": "仅传需调整计划扣款时间的期次",
+            "items": { "$ref": "#/components/schemas/OrderModifyInstallment" }
+          }
+        },
+        "required": ["outOrderId", "rentStartTime", "rentEndTime"]
+      },
+      "OrderSignRequest": {
+        "type": "object",
+        "properties": {
+          "outOrderId": { "type": "string", "maxLength": 64 }
+        },
+        "required": ["outOrderId"]
+      },
+      "OrderSignData": {
+        "type": "object",
+        "properties": {
+          "signStr": { "type": "string", "description": "签约字符串，供前端唤起芝麻受理台" },
+          "signLaunchMethod": { "type": "string", "description": "唤起方式，如 TRADEPAY" }
+        },
+        "required": ["signStr", "signLaunchMethod"]
+      },
+      "RiskConsultRequest": {
+        "type": "object",
+        "properties": {
+          "outOrderId": { "type": "string", "maxLength": 64 }
+        },
+        "required": ["outOrderId"]
+      },
+      "RiskConsultData": {
+        "type": "object",
+        "properties": {
+          "riskLevel": {
+            "type": "string",
+            "enum": ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10"],
+            "description": "综合风险等级"
+          },
+          "auditResult": {
+            "type": "string",
+            "nullable": true,
+            "enum": ["1", "2", "3"],
+            "description": "字典D10006审核结论，已有审核记录时返回"
+          },
+          "consultResult": { "type": "string", "nullable": true, "description": "风控咨询详情（JSON）" }
+        },
+        "required": ["riskLevel"]
+      },
+      "RiskAuditRequest": {
+        "type": "object",
+        "properties": {
+          "outOrderId": { "type": "string", "maxLength": 64 },
+          "auditResult": { "type": "string", "enum": ["1", "2"], "description": "1-通过 2-拒绝" },
+          "rejectReason": { "type": "string", "maxLength": 200, "description": "拒绝原因，auditResult=2 时必填" }
+        },
+        "required": ["outOrderId", "auditResult"]
+      },
+      "PayFeeItem": {
+        "type": "object",
+        "properties": {
+          "feeType": { "type": "string", "enum": ["RENT", "INDEMNITY"], "description": "订阅金/赔付违约金" },
+          "installmentNo": { "type": "integer", "format": "int32", "minimum": 1, "description": "期号，feeType=RENT 时必填" },
+          "payAmount": { "type": "string", "description": "费项金额（元，2位小数）" }
+        },
+        "required": ["feeType", "payAmount"]
+      },
+      "OrderPayRequest": {
+        "type": "object",
+        "properties": {
+          "outOrderId": { "type": "string", "maxLength": 64 },
+          "payMethod": { "type": "string", "enum": ["RENT_DEDUCT", "PRE_AUTH", "JSAPI"] },
+          "payItems": {
+            "type": "array",
+            "maxItems": 36,
+            "items": { "$ref": "#/components/schemas/PayFeeItem" }
+          },
+          "payTimeoutExpress": { "type": "string", "description": "支付超时时间，如30m，JSAPI场景有效" }
+        },
+        "required": ["outOrderId", "payMethod", "payItems"]
+      },
+      "OrderPayData": {
+        "type": "object",
+        "properties": {
+          "tradeNo": { "type": "string", "nullable": true, "description": "支付宝交易号，JSAPI场景返回供 my.tradePay" },
+          "outTradeNo": { "type": "string", "description": "商家侧支付单号" },
+          "payAmount": { "type": "string", "description": "支付总金额（元）" }
+        },
+        "required": ["outTradeNo", "payAmount"]
+      },
+      "PaySyncRequest": {
+        "type": "object",
+        "properties": {
+          "outOrderId": { "type": "string", "maxLength": 64 },
+          "payItems": {
+            "type": "array",
+            "maxItems": 36,
+            "items": { "$ref": "#/components/schemas/PayFeeItem" }
+          }
+        },
+        "required": ["outOrderId", "payItems"]
+      },
+      "PaySyncData": {
+        "type": "object",
+        "properties": {
+          "outTradeNo": { "type": "string", "description": "商家侧支付单号" },
+          "payAmount": { "type": "string", "description": "本次同步总金额（元）" }
+        },
+        "required": ["outTradeNo", "payAmount"]
+      },
+      "RefundItem": {
+        "type": "object",
+        "properties": {
+          "payRecordId": { "type": "string", "description": "原支付记录ID（雪花ID）" },
+          "refundAmount": { "type": "string", "description": "退款金额（元，>0），不超过可退余额" },
+          "refundReason": { "type": "string", "maxLength": 200 }
+        },
+        "required": ["payRecordId", "refundAmount"]
+      },
+      "RefundRequest": {
+        "type": "object",
+        "properties": {
+          "outOrderId": { "type": "string", "maxLength": 64 },
+          "refundItems": {
+            "type": "array",
+            "maxItems": 50,
+            "items": { "$ref": "#/components/schemas/RefundItem" }
+          }
+        },
+        "required": ["outOrderId", "refundItems"]
+      },
+      "PayRecordPageRequest": {
+        "type": "object",
+        "allOf": [{ "$ref": "#/components/schemas/PageParam" }],
+        "properties": {
+          "params": {
+            "type": "object",
+            "properties": {
+              "outOrderId": { "type": "string", "maxLength": 64 },
+              "outTradeNo": { "type": "string", "maxLength": 64 },
+              "tradeNo": { "type": "string", "maxLength": 64 },
+              "payMethod": { "type": "string", "enum": ["RENT_DEDUCT", "PRE_AUTH", "JSAPI"] },
+              "payStatus": { "type": "string", "enum": ["0", "1", "2", "3"], "description": "字典D10008" },
+              "payChannel": { "type": "string", "enum": ["ALIPAY", "OTHER"] }
+            }
+          }
+        },
+        "required": ["params"]
+      },
+      "PayRecordItemVO": {
+        "type": "object",
+        "properties": {
+          "feeType": { "type": "string", "enum": ["RENT", "INDEMNITY"] },
+          "installmentNo": { "type": "integer", "format": "int32", "nullable": true },
+          "payAmount": { "type": "string" }
+        },
+        "required": ["feeType", "payAmount"]
+      },
+      "PayRecordVO": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "outOrderId": { "type": "string" },
+          "outTradeNo": { "type": "string" },
+          "tradeNo": { "type": "string", "nullable": true },
+          "payMethod": { "type": "string", "enum": ["RENT_DEDUCT", "PRE_AUTH", "JSAPI"] },
+          "payAmount": { "type": "string" },
+          "payStatus": { "type": "string", "enum": ["0", "1", "2", "3"], "description": "字典D10008：0-处理中 1-成功 2-失败 3-已全额退款" },
+          "payChannel": { "type": "string", "enum": ["ALIPAY", "OTHER"] },
+          "payTime": { "type": "string", "nullable": true },
+          "refundAmount": { "type": "string", "description": "已退款金额（元）" },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PayRecordItemVO" }
+          }
+        },
+        "required": ["id", "outOrderId", "outTradeNo", "payMethod", "payAmount", "payStatus", "payChannel", "refundAmount", "items"]
+      },
+      "PayRecordPageData": {
+        "type": "object",
+        "allOf": [{ "$ref": "#/components/schemas/PageMeta" }],
+        "properties": {
+          "records": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PayRecordVO" }
+          }
+        },
+        "required": ["records"]
+      },
+      "AftersaleCreateRequest": {
+        "type": "object",
+        "properties": {
+          "outOrderId": { "type": "string", "maxLength": 64 },
+          "aftersaleType": { "type": "string", "enum": ["ORDER_CANCEL", "COMPENSATION"], "description": "取消订单/赔付" },
+          "reasonCode": { "type": "string", "maxLength": 32, "description": "售后原因编码，以支付宝文档为准" },
+          "reasonDesc": { "type": "string", "maxLength": 200 },
+          "additionalDesc": { "type": "string", "maxLength": 500, "description": "补充说明" },
+          "fileIds": { "type": "string", "maxLength": 500, "description": "凭证附件ID，多个逗号分隔" },
+          "payAmount": { "type": "string", "description": "赔付金额（元，>0），aftersaleType=COMPENSATION 时必填" }
+        },
+        "required": ["outOrderId", "aftersaleType", "reasonCode"]
+      },
+      "AftersaleCreateData": {
+        "type": "object",
+        "properties": {
+          "outAftersaleId": { "type": "string", "description": "商家侧售后单号" },
+          "alipayAftersaleId": { "type": "string", "nullable": true, "description": "支付宝售后单号" }
+        },
+        "required": ["outAftersaleId"]
+      },
+      "AftersalePageRequest": {
+        "type": "object",
+        "allOf": [{ "$ref": "#/components/schemas/PageParam" }],
+        "properties": {
+          "params": {
+            "type": "object",
+            "properties": {
+              "outOrderId": { "type": "string", "maxLength": 64 },
+              "outAftersaleId": { "type": "string", "maxLength": 64 },
+              "aftersaleType": { "type": "string", "enum": ["ORDER_CANCEL", "COMPENSATION"] },
+              "aftersaleStatus": { "type": "string", "enum": ["0", "1", "2"], "description": "字典D10011" }
+            }
+          }
+        },
+        "required": ["params"]
+      },
+      "AftersaleVO": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "outAftersaleId": { "type": "string" },
+          "alipayAftersaleId": { "type": "string", "nullable": true },
+          "outOrderId": { "type": "string" },
+          "aftersaleType": { "type": "string", "enum": ["ORDER_CANCEL", "COMPENSATION"] },
+          "reasonCode": { "type": "string" },
+          "reasonDesc": { "type": "string", "nullable": true },
+          "additionalDesc": { "type": "string", "nullable": true },
+          "fileIds": { "type": "string", "nullable": true },
+          "payAmount": { "type": "string", "nullable": true },
+          "payStatus": { "type": "string", "enum": ["0", "1", "2"], "description": "字典D10010：0-待收取 1-已收取 2-免于收取" },
+          "aftersaleStatus": { "type": "string", "enum": ["0", "1", "2"], "description": "字典D10011：0-处理中 1-已完结 2-已取消" },
+          "finishTime": { "type": "string", "nullable": true },
+          "createTime": { "type": "string" }
+        },
+        "required": ["id", "outAftersaleId", "outOrderId", "aftersaleType", "reasonCode", "payStatus", "aftersaleStatus", "createTime"]
+      },
+      "AftersalePageData": {
+        "type": "object",
+        "allOf": [{ "$ref": "#/components/schemas/PageMeta" }],
+        "properties": {
+          "records": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AftersaleVO" }
+          }
+        },
+        "required": ["records"]
+      },
+      "AftersaleConfirmRequest": {
+        "type": "object",
+        "properties": {
+          "outAftersaleId": { "type": "string", "maxLength": 64 },
+          "operationType": {
+            "type": "string",
+            "enum": ["USER_CANCEL_APPLY", "AFTERSALE_FINISH"],
+            "description": "用户取消申请/售后完结"
+          }
+        },
+        "required": ["outAftersaleId", "operationType"]
+      },
+      "AlipayNotifyRequest": {
+        "type": "object",
+        "description": "支付宝异步通知公共参数（form-urlencoded）",
+        "properties": {
+          "biz_content": { "type": "string", "description": "通知业务报文（JSON原文）" },
+          "msg_method": { "type": "string", "maxLength": 100, "description": "消息方法名" },
+          "notify_id": { "type": "string", "maxLength": 64, "description": "通知ID，幂等去重键" },
+          "app_id": { "type": "string", "maxLength": 64 },
+          "sign": { "type": "string" },
+          "sign_type": { "type": "string", "enum": ["RSA2"] },
+          "version": { "type": "string", "maxLength": 16 },
+          "utc_timestamp": { "type": "string", "description": "时间戳 yyyy-MM-dd HH:mm:ss" },
+          "charset": { "type": "string", "enum": ["UTF-8"] }
+        },
+        "required": ["biz_content", "msg_method", "notify_id", "app_id", "sign", "sign_type", "version", "utc_timestamp"]
+      }
+    }
+  }
+}

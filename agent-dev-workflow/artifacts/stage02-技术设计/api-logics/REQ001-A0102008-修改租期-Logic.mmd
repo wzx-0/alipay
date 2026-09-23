@@ -1,0 +1,23 @@
+flowchart TD
+    Start([接收修改租期请求]) --> Validate{参数校验:outOrderId与租期时间及期次列表}
+    Validate -->|失败| ParamError[返回参数错误]
+    Validate -->|通过| AcquireLock[获取分布式锁:outOrderId维度]
+    AcquireLock -->|失败| LockError[返回订单处理中错误]
+    AcquireLock -->|成功| QueryOrder[SELECT tb_rent_order与tb_rent_order_installment:订单及被调整期次]
+    QueryOrder --> StatusCheck{校验:订单未完结未关闭且被调整期次均未支付}
+    StatusCheck -->|不满足| StatusError[返回订单或期次状态错误]
+    StatusCheck -->|通过| TxBegin[开启事务]
+    TxBegin --> UpdateOrderRentTime[Update tb_rent_order:更新rent_start_time与rent_end_time]
+    UpdateOrderRentTime --> BatchUpdateInstallment[BatchUpdate tb_rent_order_installment:按期号更新plan_pay_time]
+    BatchUpdateInstallment --> TxCommit[提交事务]
+    TxCommit --> CallAlipayModify["调用：支付宝开放平台-alipay.commerce.rent.order.modify|修改租赁计划时间"]
+    CallAlipayModify -->|成功| ReleaseLock[释放锁]
+    ReleaseLock --> Success[返回成功]
+    CallAlipayModify -->|失败| Compensate[补偿:恢复订单租期与期次原plan_pay_time]
+    Compensate --> ReleaseLockFail[释放锁]
+    ReleaseLockFail --> FailResp[返回修改失败]
+    ParamError --> End([结束])
+    LockError --> End
+    StatusError --> End
+    FailResp --> End
+    Success --> End
