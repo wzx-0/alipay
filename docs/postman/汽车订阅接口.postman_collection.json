@@ -1,0 +1,466 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-req1-4e5f-8a9b-car-subscription",
+		"name": "汽车订阅接口（REQ001-支付宝对接）",
+		"description": "汽车订阅后端 rent-app 接口集合。\n\n## 使用说明\n1. 环境变量 `baseUrl` 默认 `http://localhost:18080`（application.yml server.port）。\n2. 所有业务接口均为 POST + application/json，统一响应结构：`{code, message, data, success, timestamp}`，成功码 `SY000000`。\n3. **可直接手动测试**（无外部依赖）：商品分页、订单分页、订单详情。\n4. **依赖支付宝网关**（创单/签约/风控/支付/履约/关单）：application.yml 中支付宝配置为 TODO 占位时调用会失败（ALIPAY_CALL_FAILED / RENT005）；本地联调可把 `alipay.rent.gateway` 指向测试网关。\n5. **回调接口** `/api/v1/callback/alipay/notify` 需要 RSA2 合法签名，手动伪造签名会返回 `fail`（验签拦截，属预期行为）。\n\n## 错误码\n| code | 含义 |\n|------|------|\n| SY000000 | 成功 |\n| RENT001 | 请求参数不合法 |\n| RENT002 | 订单不存在 |\n| RENT003 | 订单状态不允许该操作 |\n| RENT004 | 商品或SKU不存在 |\n| RENT005 | 支付宝接口调用失败 |\n| RENT006 | 支付宝通知验签失败 |\n| SYS000 | 系统繁忙 |",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:18080",
+			"type": "string"
+		},
+		{
+			"key": "outOrderId",
+			"value": "替换为已创建订单的outOrderId",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "商品",
+			"item": [
+				{
+					"name": "A0101001 商品分页查询",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"pageNo\": 1,\n    \"pageSize\": 10,\n    \"params\": {\n        \"goodsName\": \"\",\n        \"goodsStatus\": \"\",\n        \"reportStatus\": \"\"\n    }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rent/goods/page",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "rent", "goods", "page"]
+						},
+						"description": "商品分页查询（商品+SKU组装）。可直接测试。\n\n**params 查询条件（均可选）**\n- goodsName：商品名称，模糊匹配\n- goodsStatus：0-下架 1-上架\n- reportStatus：0-未提报 1-提报中 2-已提报 3-提报失败\n\n**校验规则**：pageNo ≥ 1；pageSize 1~100；params 不能为 null（可传空对象）。"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "订单",
+			"item": [
+				{
+					"name": "A0102001 创建租赁订单",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"orderType\": \"RENT\",\n    \"sourceId\": \"SRC-TEST-001\",\n    \"buyerOpenId\": \"OPENID-TEST-001\",\n    \"goodsId\": \"商品ID(数字字符串)\",\n    \"skuId\": \"SKU ID(数字字符串)\",\n    \"quantity\": 1,\n    \"depositPrice\": \"5000\",\n    \"freight\": \"50\",\n    \"additionalPrice\": \"\",\n    \"rentPlanInfo\": {\n        \"rentStartTime\": \"2026-10-01 00:00:00\",\n        \"rentEndTime\": \"2027-10-01 00:00:00\",\n        \"installments\": [\n            {\n                \"installmentNo\": 1,\n                \"installmentPrice\": \"1000\",\n                \"planPayTime\": \"2026-11-01 00:00:00\",\n                \"buyoutPrice\": \"\"\n            }\n        ]\n    },\n    \"shopInfo\": {\n        \"shopName\": \"测试门店\",\n        \"shopAddress\": \"测试地址1号\",\n        \"shopTel\": \"0755-12345678\"\n    },\n    \"receiverInfo\": {\n        \"receiverName\": \"张三\",\n        \"receiverTel\": \"13800138000\",\n        \"detailedAddress\": \"测试市测试区测试路1号\"\n    }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rent/order/create",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "rent", "order", "create"]
+						},
+						"description": "创建租赁订单（会调用支付宝 order.create，失败时本地自动关单并返回 RENT005）。\n\n**公共必填**：orderType / sourceId / buyerOpenId\n\n**按订单类型**\n- RENT（新租）：必填 goodsId、skuId、quantity、depositPrice、rentPlanInfo（含 rentStartTime/rentEndTime/installments，最长36期）\n- RELET（续订）/ BUYOUT（买断）：必填 originOrderId（原订单的 outOrderId），商品明细自动取原订单快照，传 reletInfo/buyoutInfo 溯源\n\n**金额字段均为字符串（元）**：installmentPrice 必填；buyoutPrice 仅最后一期；freight/additionalPrice 选填。\n\n**返回 data**：alipayOrderId / outOrderId / path（订单详情页路径）\n\n⚠️ 时间格式必须为 `yyyy-MM-dd HH:mm:ss`。"
+					},
+					"response": []
+				},
+				{
+					"name": "A0102002 订单分页查询",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"pageNo\": 1,\n    \"pageSize\": 10,\n    \"params\": {\n        \"outOrderId\": \"\",\n        \"alipayOrderId\": \"\",\n        \"orderType\": \"\",\n        \"orderStatus\": \"\",\n        \"sourceChannel\": \"\",\n        \"buyerId\": \"\",\n        \"createTimeBegin\": \"\",\n        \"createTimeEnd\": \"\"\n    }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rent/order/page",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "rent", "order", "page"]
+						},
+						"description": "订单分页查询。可直接测试。\n\n**params 查询条件（均可选，精确匹配）**\n- outOrderId / alipayOrderId：单号\n- orderType：RENT / RELET / BUYOUT\n- orderStatus：CREATED / SIGNED / APPROVED / DELIVERED / RECEIVED / RETURN_DELIVERED / RETURN_RECEIVED / FINISHED / CLOSED\n- sourceChannel：1-公域 0-私域\n- buyerId：买家支付宝 userId\n- createTimeBegin / createTimeEnd：`yyyy-MM-dd HH:mm:ss`"
+					},
+					"response": []
+				},
+				{
+					"name": "A0102003 订单详情查询",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"outOrderId\": \"{{outOrderId}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rent/order/detail",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "rent", "order", "detail"]
+						},
+						"description": "订单详情：订单主体 + 商品明细 + 订阅计划期次 + 签约信息（未签约时 sign 为空）。可直接测试。\n\n**账单状态 billStatus**：0-待支付 1-支付中 2-已支付 3-支付失败 4-已关闭\n\n**签约状态 signStatus**：0-未签约 1-已签约 2-已解约；**冻结状态 freezeStatus**：0-未冻结 1-已冻结 2-已解冻 3-已转支付"
+					},
+					"response": []
+				},
+				{
+					"name": "A0102004 履约同步（发货/寄回）",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"outOrderId\": \"{{outOrderId}}\",\n    \"operationType\": \"MERCHANT_DELIVERY_SEND\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rent/order/fulfillment/send",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "rent", "order", "fulfillment", "send"]
+						},
+						"description": "履约同步：商家交车 或 用户还车寄出。\n\n**operationType 枚举与状态前置**\n- `MERCHANT_DELIVERY_SEND` 商家发货（交车）：订单需为 **APPROVED** → 成功后变 DELIVERED\n- `USER_DELIVERY_SEND` 用户寄回（还车寄出）：订单需为 **RECEIVED** → 成功后变 RETURN_DELIVERED\n\n状态不符返回 RENT003。依赖支付宝网关。"
+					},
+					"response": []
+				},
+				{
+					"name": "A0102005 收货确认",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"outOrderId\": \"{{outOrderId}}\",\n    \"receiveType\": \"MERCHANT_DELIVERY_RECEIVED\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rent/order/fulfillment/receive",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "rent", "order", "fulfillment", "receive"]
+						},
+						"description": "收货确认。\n\n**receiveType 枚举与状态前置**\n- `MERCHANT_DELIVERY_RECEIVED` 用户确认收车：订单需为 **DELIVERED** → 成功后变 RECEIVED\n- `USER_DELIVERY_RECEIVED` 商家验收收车（还车）：订单需为 **RETURN_DELIVERED** → 成功后变 RETURN_RECEIVED\n\n状态不符返回 RENT003。依赖支付宝网关。"
+					},
+					"response": []
+				},
+				{
+					"name": "A0102006 订单完结",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"outOrderId\": \"{{outOrderId}}\",\n    \"finishStatus\": \"USER_RETURNED\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rent/order/fulfillment/finish",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "rent", "order", "fulfillment", "finish"]
+						},
+						"description": "订单完结（支付宝自动解冻预授权 + 解除代扣签约）。\n\n**前置状态**：RETURN_RECEIVED → 成功后变 FINISHED\n\n**finishStatus 枚举**\n- USER_RETURNED 到期归还\n- USER_RETURNED_IN_ADVANCE 提前归还\n- OTHER 其他\n\n依赖支付宝网关。"
+					},
+					"response": []
+				},
+				{
+					"name": "A0102007 订单关闭",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"outOrderId\": \"{{outOrderId}}\",\n    \"reasonCode\": \"3114\",\n    \"reasonDesc\": \"用户取消\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rent/order/close",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "rent", "order", "close"]
+						},
+						"description": "订单关闭（确认收货前）。\n\n**前置状态**：非 FINISHED / 非 CLOSED（已完结或已关闭返回 RENT003）\n**必填**：outOrderId、reasonCode（关单原因编码，风控拒绝参考值 3114）；reasonDesc 选填。\n\n⚠️ 协议要求已支付费项须先全额退款，否则支付宝侧拒绝。依赖支付宝网关。"
+					},
+					"response": []
+				},
+				{
+					"name": "A0102008 修改租期",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"outOrderId\": \"{{outOrderId}}\",\n    \"rentStartTime\": \"2026-11-01 00:00:00\",\n    \"rentEndTime\": \"2027-11-01 00:00:00\",\n    \"installments\": [\n        {\n            \"installmentNo\": 1,\n            \"planPayTime\": \"2026-12-01 00:00:00\"\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rent/order/modify",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "rent", "order", "modify"]
+						},
+						"description": "修改租期（支付宝 order.modify，type=RENT_PLAN_TIME）。\n\n**必填**：outOrderId、rentStartTime、rentEndTime\n**installments 选填**：仅传需要调整计划扣款时间的期次；期号必须已存在（否则 RENT001），成功后同步本地期次 planPayTime。\n\n依赖支付宝网关。"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "签约",
+			"item": [
+				{
+					"name": "A0102009 获取签约串",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"outOrderId\": \"{{outOrderId}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rent/order/sign",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "rent", "order", "sign"]
+						},
+						"description": "获取签约串（受理台退出后补偿唤起，与创单签约要素一致：芝麻免押 + 代扣场景）。\n\n**返回 data**：signStr（前端唤起芝麻受理台）、signLaunchMethod（唤起方式）。依赖支付宝网关。"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "风控",
+			"item": [
+				{
+					"name": "A0103001 风险咨询",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"outOrderId\": \"{{outOrderId}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rent/risk/consult",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "rent", "risk", "consult"]
+						},
+						"description": "综合风险咨询（每次调用留痕一条审核记录）。\n\n**返回 data**：riskLevel（T1~T10，T1-T4低/T5-T6中/T7-T10高）、consultResult（风控详情JSON）、auditResult（已有审核结论时返回：1-通过 2-拒绝 3-转人工）。依赖支付宝网关。"
+					},
+					"response": []
+				},
+				{
+					"name": "A0103002 审核结论提交",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"outOrderId\": \"{{outOrderId}}\",\n    \"auditResult\": \"1\",\n    \"rejectReason\": \"\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rent/risk/audit",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "rent", "risk", "audit"]
+						},
+						"description": "提交人工审核结论（管理端）。\n\n**auditResult**\n- `1` 通过：调支付宝 fulfillment.approve，订单 CREATED → APPROVED\n- `2` 拒绝：**rejectReason 必填**（否则 RENT001），调 order.close（reasonCode=3114），订单 → CLOSED\n\n依赖支付宝网关。"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "支付",
+			"item": [
+				{
+					"name": "A0104001 订单支付",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"outOrderId\": \"{{outOrderId}}\",\n    \"payMethod\": \"JSAPI\",\n    \"payItems\": [\n        {\n            \"feeType\": \"RENT\",\n            \"installmentNo\": 1,\n            \"payAmount\": \"1000.00\"\n        }\n    ],\n    \"payTimeoutExpress\": \"15m\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rent/order/pay",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "rent", "order", "pay"]
+						},
+						"description": "订单支付（代扣/预授权转支付/JSAPI 主动支付）。\n\n**payMethod 枚举**：JSAPI（小程序收银台）/ RENT_DEDUCT（周期代扣）/ PRE_AUTH（预授权转支付）\n\n**payItems**：feeType（RENT-订阅金 / INDEMNITY-赔付违约金）；**feeType=RENT 时 installmentNo 必填**（期次置支付中，已支付期次不覆盖）。\n\npayTimeoutExpress 选填（如 15m，JSAPI 场景有效）。\n\n**返回 data**：tradeNo（JSAPI 供前端 my.tradePay）、outTradeNo（=订单号P+4位流水）、payAmount。\n\n⚠️ 支付结果以异步通知为准（落 tb_rent_pay_record，状态 0-处理中/1-成功）。依赖支付宝网关。"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "回调（支付宝→本服务）",
+			"item": [
+				{
+					"name": "异步通知（验签）",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/x-www-form-urlencoded"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "notify_id",
+									"value": "NID-TEST-001",
+									"type": "text"
+								},
+								{
+									"key": "msg_method",
+									"value": "",
+									"type": "text",
+									"disabled": true
+								},
+								{
+									"key": "biz_content",
+									"value": "{\"out_trade_no\":\"OUT1P0001\",\"trade_status\":\"TRADE_SUCCESS\",\"trade_no\":\"TN001\"}",
+									"type": "text"
+								},
+								{
+									"key": "sign_type",
+									"value": "RSA2",
+									"type": "text"
+								},
+								{
+									"key": "sign",
+									"value": "替换为RSA2签名(Base64)",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/callback/alipay/notify",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "callback", "alipay", "notify"]
+						},
+						"description": "支付宝异步通知统一入口（冻结/支付/售后/消息）。**注意：返回纯文本 success/fail，不走统一 JSON 包装。**\n\n**处理链路**：RSA2 验签（排除 sign/sign_type）→ notify_id 幂等 → 落库 → 分类分发（PAY 更新支付流水+期次账单；FUND_AUTH_FREEZE 推进订单至 SIGNED；MESSAGE 落库留痕）。\n\n⚠️ sign 无法伪造：手动传假签名会返回 `fail`（RENT006 验签拦截，属预期行为）；biz_content 含 trade_status 归类为支付通知、含 operation_status 归类为冻结通知、带 msg_method 归类为消息通知。\n\n处理失败（如无对应流水）仍应答 success 但记录 process_status=2 待补偿重试。"
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
