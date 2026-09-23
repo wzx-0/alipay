@@ -26,6 +26,8 @@ mybatis-plus:
 # 支付宝汽车订阅对接配置（以下TODO项必须填写后才能联调，详见 docs/开发执行手册.md）
 alipay:
   rent:
+    # SDK自动装配开关：引入SDK依赖后置true，由SDK自动注册AlipayRentClient/AlipayRentConfig
+    enabled: true
     # 开放平台应用APPID
     app-id: TODOAPPID
     # 应用私钥（PKCS8一行Base64，不含头尾标记）

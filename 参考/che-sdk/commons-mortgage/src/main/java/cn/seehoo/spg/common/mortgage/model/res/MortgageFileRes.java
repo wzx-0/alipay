@@ -1,0 +1,46 @@
+package cn.seehoo.spg.common.mortgage.model.res;
+
+import lombok.Data;
+
+/**
+ * 附件查询出参
+ * @author zhangxx
+ * @date 2026/3/26 15:14
+ */
+@Data
+public class MortgageFileRes {
+    /**
+     * 主键id
+     */
+    private Long id;
+
+    /**
+     * 订单号
+     */
+    private String bussinessNo;
+
+    /**
+     * 附件小类编码
+     */
+    private String subCategoryCode;
+
+    /**
+     * 附件名称
+     */
+    private String fileName;
+
+    /**
+     * 附件id
+     */
+    private String fileId;
+
+    /**
+     * 附件大小（单位：字节）
+     */
+    private Integer fileSize;
+
+    /**
+     * 文件下载路径
+     */
+    private String filePath;
+}

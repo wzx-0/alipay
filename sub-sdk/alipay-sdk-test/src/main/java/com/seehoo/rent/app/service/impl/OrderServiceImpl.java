@@ -27,7 +27,8 @@ import com.seehoo.rent.app.mapper.RentOrderItemMapper;
 import com.seehoo.rent.app.mapper.RentOrderMapper;
 import com.seehoo.rent.app.mapper.RentOrderSignMapper;
 import com.seehoo.rent.app.service.OrderService;
-import com.seehoo.rent.sdk.AlipayRentClient;
+import com.seehoo.rent.sdk.client.AlipayRentClient;
+import com.seehoo.rent.sdk.config.AlipayRentConfig;
 import com.seehoo.rent.sdk.AlipayRentException;
 import com.seehoo.rent.sdk.BizFields;
 import com.seehoo.rent.sdk.RentConstants;
@@ -80,6 +81,8 @@ public class OrderServiceImpl implements OrderService {
     private AlipayRentClient alipayRentClient;
     @Resource
     private AlipayProperties alipayProperties;
+    @Resource
+    private AlipayRentConfig alipayRentConfig;
     @Resource
     private TransactionTemplate transactionTemplate;
 
@@ -266,8 +269,8 @@ public class OrderServiceImpl implements OrderService {
         request.setOutOrderId(order.getOutOrderId());
         request.setOpenId(req.getBuyerOpenId());
         request.setSourceId(req.getSourceId());
-        if (StrUtil.isNotBlank(alipayProperties.getTradeAppId())) {
-            request.setTradeAppId(alipayProperties.getTradeAppId());
+        if (StrUtil.isNotBlank(alipayRentConfig.getTradeAppId())) {
+            request.setTradeAppId(alipayRentConfig.getTradeAppId());
         }
         request.setItemInfos(buildItemInfos(item));
         request.setRentPlanInfo(buildRentPlanInfo(req));

@@ -1,0 +1,2 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+ cn.seehoo.spg.bizcom.collection.autoconfig.CollectionAutoConfiguration

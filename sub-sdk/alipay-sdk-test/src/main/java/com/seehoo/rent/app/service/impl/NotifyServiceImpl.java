@@ -16,7 +16,7 @@ import com.seehoo.rent.app.mapper.RentOrderSignMapper;
 import com.seehoo.rent.app.mapper.RentPayItemMapper;
 import com.seehoo.rent.app.mapper.RentPayRecordMapper;
 import com.seehoo.rent.app.service.NotifyService;
-import com.seehoo.rent.sdk.AlipayRentConfig;
+import com.seehoo.rent.sdk.config.AlipayRentConfig;
 import com.seehoo.rent.sdk.SignUtil;
 import com.seehoo.rent.sdk.model.PayItem;
 import com.seehoo.rent.sdk.model.RentOrderStatus;

@@ -7,7 +7,7 @@ import com.seehoo.rent.app.dto.OrderActionVo;
 import com.seehoo.rent.app.entity.RentOrder;
 import com.seehoo.rent.app.mapper.RentOrderMapper;
 import com.seehoo.rent.app.service.SignService;
-import com.seehoo.rent.sdk.AlipayRentClient;
+import com.seehoo.rent.sdk.client.AlipayRentClient;
 import com.seehoo.rent.sdk.BizFields;
 import com.seehoo.rent.sdk.RentResponse;
 import com.seehoo.rent.sdk.model.OrderSignRequest;

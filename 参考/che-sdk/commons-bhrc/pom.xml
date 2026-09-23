@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>cn.seehoo.spg.common</groupId>
+        <artifactId>huaxia-common</artifactId>
+        <version>2.0.3-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>commons-bhrc</artifactId>
+    <name>commons-bhrc</name>
+    <description>百行征信</description>
+    
+    <dependencies>
+        <dependency>
+            <groupId>cn.seehoo.spg.commons</groupId>
+            <artifactId>commons-core</artifactId>
+        </dependency>
+        
+        <dependency>
+        	<groupId>org.springframework.boot</groupId>
+        	<artifactId>spring-boot-configuration-processor</artifactId>
+        	<optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>cn.seehoo.spg.commons</groupId>
+            <artifactId>commons-redis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>cn.seehoo.spg.base</groupId>
+            <artifactId>che-base-api</artifactId>
+            <version>2.0.3-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
+    </dependencies>
+</project>

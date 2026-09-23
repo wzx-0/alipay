@@ -1,0 +1,4 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+cn.seehoo.spg.common.bhrc.autoconfig.HxBhrcAutoConfig,\
+cn.seehoo.spg.common.bhrc.autoconfig.HxBhrcPhoneAutoConfig,\
+cn.seehoo.spg.common.bhrc.autoconfig.HxBhrcBankCardAutoConfig

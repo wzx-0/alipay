@@ -10,7 +10,7 @@ import com.seehoo.rent.app.entity.RiskAudit;
 import com.seehoo.rent.app.mapper.RentOrderMapper;
 import com.seehoo.rent.app.mapper.RiskAuditMapper;
 import com.seehoo.rent.app.service.RiskService;
-import com.seehoo.rent.sdk.AlipayRentClient;
+import com.seehoo.rent.sdk.client.AlipayRentClient;
 import com.seehoo.rent.sdk.BizFields;
 import com.seehoo.rent.sdk.RentResponse;
 import com.seehoo.rent.sdk.model.FulfillmentApproveRequest;

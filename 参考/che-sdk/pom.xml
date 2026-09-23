@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>cn.seehoo.spg.rootpom</groupId>
+        <artifactId>spg-rootpom</artifactId>
+        <version>2.0.3-SNAPSHOT</version>
+    </parent>
+
+    <groupId>cn.seehoo.spg.common</groupId>
+    <artifactId>huaxia-common</artifactId>
+    <version>2.0.3-SNAPSHOT</version>
+    <name>huaxia-common</name>
+    <packaging>pom</packaging>
+    <description>huaxia-common project for Spring Boot</description>
+
+    <properties>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <spg.biz.version>2.0.3-SNAPSHOT</spg.biz.version>
+    </properties>
+
+    <modules>
+        <module>commons-utils</module>
+        <module>commons-unifyapp</module>
+        <module>commons-usersync</module>
+        <module>commons-bhrc</module>
+        <module>commons-aml</module>
+        <module>commons-signpl</module>
+        <module>commons-ecif</module>
+        <module>commons-pboc</module>
+        <module>commons-elecheck</module>
+        <module>commons-gps</module>
+        <module>commons-qcc</module>
+        <module>commons-gd</module>
+        <module>commons-ocr</module>
+        <module>commons-risk</module>
+        <module>commons-mortgage</module>
+        <module>commons-intel</module>
+        <module>commons-order</module>
+        <module>commons-collection</module>
+        <module>commons-opl</module>
+    </modules>
+
+    <dependencies>
+        <dependency>
+            <groupId>cn.seehoo.spg.commons</groupId>
+            <artifactId>commons-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>cn.seehoo.spg.commons</groupId>
+            <artifactId>commons-log</artifactId>
+        </dependency>
+    </dependencies>
+</project>

@@ -16,7 +16,7 @@ import com.seehoo.rent.app.mapper.RentPayItemMapper;
 import com.seehoo.rent.app.mapper.RentPayRecordMapper;
 import com.seehoo.rent.app.service.PayService;
 import com.seehoo.rent.app.config.AlipayProperties;
-import com.seehoo.rent.sdk.AlipayRentClient;
+import com.seehoo.rent.sdk.client.AlipayRentClient;
 import com.seehoo.rent.sdk.BizFields;
 import com.seehoo.rent.sdk.RentResponse;
 import com.seehoo.rent.sdk.model.OrderPayRequest;

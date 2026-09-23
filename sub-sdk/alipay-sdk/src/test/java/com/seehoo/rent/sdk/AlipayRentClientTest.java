@@ -1,5 +1,8 @@
 package com.seehoo.rent.sdk;
 
+import com.seehoo.rent.sdk.client.AlipayRentClient;
+import com.seehoo.rent.sdk.client.AlipayRentDefaultClient;
+import com.seehoo.rent.sdk.config.AlipayRentConfig;
 import com.seehoo.rent.sdk.model.OrderCreateRequest;
 import com.seehoo.rent.sdk.model.OrderQueryRequest;
 import com.seehoo.rent.sdk.model.RiskConsultRequest;
@@ -60,14 +63,13 @@ class AlipayRentClientTest {
     }
 
     private AlipayRentClient newClient(boolean verifySign, String privateKey) {
-        AlipayRentConfig config = AlipayRentConfig.builder()
-                .appId("2021000000000001")
-                .appPrivateKey(privateKey)
-                .alipayPublicKey(Base64.getEncoder().encodeToString(gateway.keyPair.getPublic().getEncoded()))
-                .gateway(gateway.gatewayUrl())
-                .verifyResponseSign(verifySign)
-                .build();
-        return new AlipayRentClient(config);
+        AlipayRentConfig config = new AlipayRentConfig();
+        config.setAppId("2021000000000001");
+        config.setAppPrivateKey(privateKey);
+        config.setAlipayPublicKey(Base64.getEncoder().encodeToString(gateway.keyPair.getPublic().getEncoded()));
+        config.setGateway(gateway.gatewayUrl());
+        config.setVerifyResponseSign(verifySign);
+        return new AlipayRentDefaultClient(config);
     }
 
     @Test
